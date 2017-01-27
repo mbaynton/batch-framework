@@ -1,0 +1,15 @@
+{
+  "name": "mbaynton/batch-processor",
+  "description": "An API and foundational algorithms for efficient processing of long-running jobs that can be divided into small work units.",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Mike Baynton",
+      "email": "mike@mbaynton.com"
+    }
+  ],
+  "require": {
+    "psr/http-message": "^1.0"
+  }
+}
