@@ -1,0 +1,70 @@
+version: '2'
+services:
+  phpunit_runner_7_1:
+    image: prophusion/prophusion-base
+    environment:
+      - PHP_VERSION=7.1.0
+      - CONTAINER_DIR=/app
+      - CONTAINER_CMD=/app/vendor/bin/phpunit
+    volumes:
+      - .:/app
+      - /tmp:/host_tmp
+      - php-builds:/usr/local/phpenv/versions
+    tmpfs:
+      - /tmp
+
+  phpunit_runner_7_0:
+    image: prophusion/prophusion-base
+    environment:
+      - PHP_VERSION=7.0.14
+      - CONTAINER_DIR=/app
+      - CONTAINER_CMD=/app/vendor/bin/phpunit
+    volumes:
+      - .:/app
+      - /tmp:/host_tmp
+      - php-builds:/usr/local/phpenv/versions
+    tmpfs:
+      - /tmp
+
+  phpunit_runner_5_6:
+    image: prophusion/prophusion-base
+    environment:
+      - PHP_VERSION=5.6.29
+      - CONTAINER_DIR=/app
+      - CONTAINER_CMD=/app/vendor/bin/phpunit
+    volumes:
+      - .:/app
+      - /tmp:/host_tmp
+      - php-builds:/usr/local/phpenv/versions
+    tmpfs:
+      - /tmp
+
+  phpunit_runner_5_5:
+    image: prophusion/prophusion-base
+    environment:
+      - PHP_VERSION=5.5.38
+      - CONTAINER_DIR=/app
+      - CONTAINER_CMD=/app/vendor/bin/phpunit
+    volumes:
+      - .:/app
+      - /tmp:/host_tmp
+      - php-builds:/usr/local/phpenv/versions
+    tmpfs:
+      - /tmp
+
+  phpunit_runner_5_4:
+    image: prophusion/prophusion-base
+    environment:
+      - PHP_VERSION=5.4.45
+      - CONTAINER_DIR=/app
+      - CONTAINER_CMD=/app/vendor/bin/phpunit
+    volumes:
+      - .:/app
+      - /tmp:/host_tmp
+      - php-builds:/usr/local/phpenv/versions
+    tmpfs:
+      - /tmp
+
+
+volumes:
+  php-builds: {}
