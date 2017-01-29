@@ -18,6 +18,10 @@ interface TaskInterface {
    * Instantiates the next Runnable that should be processed by the Runner.
    *
    * @param RunnerInterface $runner
+   * @paran int $runner_rank
+   *   A number between 0 and $num_total_runners - 1.
+   * @param int $num_total_runners
+   *   The total number of Runners executing this task's Runnables.
    * @param int $last_processed_runnable_id
    *   On the first incarnation of each Runner bearing a unique
    *   $runner->getRunnerId(), this value will be 0. The iterator should start
@@ -29,7 +33,7 @@ interface TaskInterface {
    *   Runner.
    * @return AbstractRunnableIterator
    */
-  function getRunnableIterator(RunnerInterface $runner, $last_processed_runnable_id);
+  function getRunnableIterator(RunnerInterface $runner, $runner_rank, $num_total_runners, $last_processed_runnable_id);
 
   function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator);
 

@@ -2,6 +2,9 @@
 
 namespace mbaynton\BatchFramework\Controller;
 
+use mbaynton\BatchFramework\Internal\TimeSource;
+use mbaynton\BatchFramework\RunnableInterface;
+
 /**
  * Class HttpRunnerControllerTrait
  *   A trait intended to be used by your Controller class that receives batch-
@@ -125,7 +128,6 @@ trait HttpRunnerControllerTrait {
 
     // Since we manage a target time to completion ourselves, we don't want the
     // default time limitations fouling it up as long as we stay within reason.
-    // TODO: If we want to support PHP 5.3 & safe mode, do something different.
     set_time_limit($this->target_completion_seconds * 2);
   }
 

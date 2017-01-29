@@ -25,6 +25,7 @@ interface ScheduledTaskInterface {
    * Gets the Runner ids performing this task's Runnables.
    *
    * @return int[]
+   *   The ids of the Runners in ascending sorted order.
    */
   function getRunnerIds();
 

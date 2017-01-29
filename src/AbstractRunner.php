@@ -31,7 +31,7 @@ abstract class AbstractRunner implements RunnerInterface {
   protected $task;
 
   /**
-   * @var ScheduledTask $scheduled_task
+   * @var ScheduledTaskInterface $scheduled_task
    */
   protected $scheduled_task;
 
@@ -42,7 +42,7 @@ abstract class AbstractRunner implements RunnerInterface {
   /**
    * @return int
    */
-  abstract function getRunnerId();
+  public abstract function getRunnerId();
 
   /**
    * @return array
@@ -145,7 +145,8 @@ abstract class AbstractRunner implements RunnerInterface {
 
     $runnable_iterator = $this->task->getRunnableIterator(
       $this,
-      (empty($state['last_completed_runnable_id']) ? 0 : $state['last_completed_runnable_id'])
+      (empty($state['last_completed_runnable_id']) ? 0 : $state['last_completed_runnable_id']),
+      $this->scheduled_task->getNumRunners()
     );
 
     $should_continue_running = TRUE;
