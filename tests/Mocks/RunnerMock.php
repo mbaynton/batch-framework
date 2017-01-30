@@ -84,9 +84,7 @@ class RunnerMock extends AbstractRunner {
         $results[] = $partial_result;
       }
     } else {
-      foreach (self::$task_result_cache_by_task_id as $collected_results) {
-        array_merge($results, $collected_results);
-      }
+      return self::$task_result_cache_by_task_id[$task_id]['ReducedResults'];
     }
 
     return $results;

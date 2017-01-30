@@ -4,8 +4,10 @@
 namespace mbaynton\BatchFramework\Tests\Unit;
 
 
+use GuzzleHttp\Psr7\Response;
 use mbaynton\BatchFramework\ScheduledTask;
 use mbaynton\BatchFramework\ScheduledTaskInterface;
+use mbaynton\BatchFramework\TaskInterface;
 use mbaynton\BatchFramework\Tests\Mocks\RunnerControllerMock;
 use mbaynton\BatchFramework\Tests\Mocks\RunnerMock;
 use mbaynton\BatchFramework\Tests\Mocks\TaskSleepMock;
@@ -90,14 +92,37 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
 
   public function testAbstractRunnerCompletesTask_MultipleRunners_MultipleIncarnations() {
     $task = new TaskSleepMock(30, 0);
+    $this->_multipleRunners_MultipleIncarnations($task);
+  }
+
+  public function testAbstractRunnerCompletesNonUnaryTasks() {
+    $task = $this->getMockBuilder('\mbaynton\BatchFramework\Tests\Mocks\TaskSleepMock')
+      ->setMethods([
+        'supportsUnaryPartialResult',
+        'assembleResultResponse'
+      ])
+      ->enableOriginalConstructor()
+      ->setConstructorArgs([30, 0])
+      ->getMock();
+    $task->method('supportsUnaryPartialResult')->willReturn(FALSE);
+    $task->method('assembleResultResponse')->willReturnCallback(function($final_results) {
+      return new Response(200, [], array_sum($final_results));
+    });
+
+    $this->_multipleRunners_MultipleIncarnations($task);
+  }
+
+  protected function _multipleRunners_MultipleIncarnations(TaskInterface $task) {
     // Some arbitrary Runner IDs should not impact anything if in sorted order.
-    $runner_ids = [412, 562, 628];
+    $runner_ids = [412 + static::$monotonic_runner_id++, 562 + static::$monotonic_runner_id++, 628 + static::$monotonic_runner_id++];
     $schedule = new ScheduledTask($task, $this->assignTaskId(), $runner_ids, '-');
     foreach ($runner_ids as $runner_id) {
       $runners[$runner_id] = $this->sutFactory(5, $runner_id, $schedule);
     }
 
-    $runner_id_incarnations = [412 => 0, 562 => 0, 628 => 0];
+    foreach ($runner_ids as $id) {
+      $runner_id_incarnations[$id] = 0;
+    }
     $result = NULL;
     while ($result === NULL) {
       $incomplete_runner_ids = reset($runners)->getIncompleteRunnerIds();
@@ -110,12 +135,14 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     }
 
     $this->assertEquals(
-      30,
+      $task->getNumRunnables(),
       $result->getBody()->getContents()
     );
     $this->assertEquals(
-      [412 => 3, 562 => 3, 628 => 3],
+      array_combine($runner_ids, [3, 3, 3]),
       $runner_id_incarnations
     );
   }
+
+
 }
