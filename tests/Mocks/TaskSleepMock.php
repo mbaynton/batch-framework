@@ -4,6 +4,7 @@
 namespace mbaynton\BatchFramework\Tests\Mocks;
 
 
+use GuzzleHttp\Psr7\Response;
 use mbaynton\BatchFramework\RunnableInterface;
 use mbaynton\BatchFramework\RunnableResultAggregatorInterface;
 use mbaynton\BatchFramework\RunnerInterface;
@@ -25,6 +26,10 @@ class TaskSleepMock implements TaskInterface {
     $this->ms_per_runnable = $ms_per_runnable;
   }
 
+  public function getMaxRunners() {
+    return 0;
+  }
+
   public function getRunnableIterator(RunnerInterface $runner, $rank, $total_runners, $last_processed_runnable_id) {
     if ($last_processed_runnable_id == 0) {
       $next = $rank;
@@ -44,6 +49,10 @@ class TaskSleepMock implements TaskInterface {
     $aggregator->collectResult($runnable, TRUE);
   }
 
+  public function supportsReduction() {
+    return TRUE;
+  }
+
   public function reduce(RunnableResultAggregatorInterface $aggregator) {
     return count($aggregator->getCollectedResults());
   }
@@ -60,6 +69,6 @@ class TaskSleepMock implements TaskInterface {
   }
 
   public function assembleResultResponse($final_results) {
-    // return new JsonResponse(['MockRunnablesRan' => array_sum($final_results)]);
+    return new Response(200, [], $final_results);
   }
 }

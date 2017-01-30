@@ -7,12 +7,29 @@ namespace mbaynton\BatchFramework;
 use Psr\Http\Message\ResponseInterface;
 
 interface TaskInterface {
-  /**1
-   * Finds the total number of Runnables that have been added to this Task.
+  /**
+   * Finds the total number of Runnables that comprise this Task.
    *
    * @return int
+   *   A representation of the total number of Runnables that comprise this
+   *   Task. An estimate is satisfactory and preferable if a precise figure
+   *   cannot be calculated in constant time; it is used only for concerns such
+   *   as computation of estimated percent / time remaining.
    */
   function getNumRunnables();
+
+  /**
+   * Sets a limit on number of Runnables that may be executing concurrently.
+   *
+   * @return int
+   *   The maximum number of Runnables that may be dispatched concurrently.
+   *
+   *   Return 1 to disable parallelization.
+   *
+   *   Values <= 0 cause the amount of concurrency to be limited only by
+   *   ScheduledTaskInterface.
+   */
+  function getMaxRunners();
 
   /**
    * Instantiates the next Runnable that should be processed by the Runner.
@@ -40,6 +57,14 @@ interface TaskInterface {
   function onRunnableError(RunnableInterface $runnable, $exception);
 
   /**
+   * Whether the Task is able to transform sets of Runnable results into a
+   * simpler intermediate result.
+   *
+   * @return bool
+   */
+  function supportsReduction();
+
+  /**
    * Transforms aggregated Runnable results into a simpler intermediate result.
    *
    * This is invoked after all the Runnables that will be executed during a
@@ -51,7 +76,8 @@ interface TaskInterface {
    * step, simply return NULL.
    *
    * Unlike updatePartialResult(), the type of the return value need not be the
-   * same as the types of the input data stored in the $aggregator.
+   * same as the types of the input data stored in the $aggregator, and need not
+   * be unary.
    *
    * @param \mbaynton\BatchFramework\RunnableResultAggregatorInterface $aggregator
    *   An aggregator instance that has collected one or more result.
@@ -77,7 +103,7 @@ interface TaskInterface {
   function supportsUnaryPartialResult();
 
   /**
-   * Updates a unary partial result based on new, possibly reduce()d Runnable
+   * Updates a unary partial result based on new reduce()d Runnable
    * results in case of algorithms whose final result can be progressively
    * computed.
    *
@@ -96,8 +122,7 @@ interface TaskInterface {
    * supportsUnaryPartialResult() returns false.
    *
    * @param mixed $new
-   *   A result from calling reduce() if implemented, else an array of Runner
-   *   results.
+   *   A result from calling reduce() that was non-null.
    * @param mixed $current
    *   The current value of the partial result.
    *   On first invocation when no partial result yet exists, will be NULL.

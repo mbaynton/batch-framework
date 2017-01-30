@@ -86,7 +86,7 @@ abstract class AbstractRunner implements RunnerInterface {
    *
    * @return int[]
    */
-  protected abstract function getIncompleteRunnerIds();
+  public abstract function getIncompleteRunnerIds();
 
   /**
    * A method that is executed after all the Runnables for this incarnation of
@@ -120,15 +120,11 @@ abstract class AbstractRunner implements RunnerInterface {
    * Runner have executed, and all other Runners have already executed all their
    * Runnables.
    *
-   * The implementation is responsible for cleanup of state associated to this
-   * Task.
-   *
    * @param \mbaynton\BatchFramework\RunnableResultAggregatorInterface $aggregator
-   * @param \mbaynton\BatchFramework\RunnableInterface $last_processed_runnable
    * @param int $runner_id
    * @return void
    */
-  protected abstract function finalizeTask(RunnableResultAggregatorInterface $aggregator, RunnableInterface $last_processed_runnable, $runner_id);
+  protected abstract function finalizeTask(RunnableResultAggregatorInterface $aggregator, $runner_id);
 
   /**
    * @return ResponseInterface
@@ -145,8 +141,9 @@ abstract class AbstractRunner implements RunnerInterface {
 
     $runnable_iterator = $this->task->getRunnableIterator(
       $this,
-      (empty($state['last_completed_runnable_id']) ? 0 : $state['last_completed_runnable_id']),
-      $this->scheduled_task->getNumRunners()
+      array_search($this->getRunnerId(), $this->scheduled_task->getRunnerIds()),
+      $this->scheduled_task->getNumRunners(),
+      (empty($state['last_completed_runnable_id']) ? 0 : $state['last_completed_runnable_id'])
     );
 
     $should_continue_running = TRUE;
@@ -178,30 +175,33 @@ abstract class AbstractRunner implements RunnerInterface {
     $incomplete_runner_ids = $state['incomplete_runner_ids'];
     $task_is_complete = $should_continue_running == TRUE && count(array_diff($incomplete_runner_ids, [$this->getRunnerId()])) == 0;
 
-    if ($aggregator->getNumCollectedResults() > 0) {
-      $reduction = $this->task->reduce($aggregator);
-      if ($reduction !== NULL) {
-        if ($this->task->supportsUnaryPartialResult()) {
-          if ($task_is_complete) {
-            // Combine all runners' partial results and above reduction.
-            $runner_partials = $this->retrieveAllResultData();
-            $current_partial = array_shift($runner_partials);
-            while($new_partial = array_shift($runner_partials)) {
-              $current_partial = $this->task->updatePartialResult($new_partial, $current_partial);
-            }
-            $results_this_runner = $this->task->updatePartialResult($reduction, $current_partial);
-          } else {
-            $partial_result = $state['partial_result'];
-            $results_this_runner = $this->task->updatePartialResult($reduction, $partial_result);
+    if ($this->task->supportsReduction()) {
+      if ($aggregator->getNumCollectedResults() > 0) {
+        $results_this_runner = $this->task->reduce($aggregator);
+      } else {
+        $results_this_runner = NULL;
+      }
+
+      if ($this->task->supportsUnaryPartialResult()) {
+        if ($task_is_complete) {
+          // Combine all runners' partial results.
+          $runner_partials = $this->retrieveAllResultData();
+          $current_partial = array_shift($runner_partials);
+          while ($new_partial = array_shift($runner_partials)) {
+            $current_partial = $this->task->updatePartialResult($new_partial, $current_partial);
           }
         } else {
-          $results_this_runner = $reduction;
+          $current_partial = $state['partial_result'];
         }
-      } else {
-        $results_this_runner = $aggregator->getCollectedResults();
+
+        if ($results_this_runner !== NULL) {
+          $results_this_runner = $this->task->updatePartialResult($results_this_runner, $current_partial);
+        } else {
+          $results_this_runner = $current_partial;
+        }
       }
     } else {
-      $results_this_runner = NULL;
+      $results_this_runner = $aggregator->getCollectedResults();
     }
 
     // If we are the last incomplete Runner for the task, and we are done...
@@ -218,12 +218,11 @@ abstract class AbstractRunner implements RunnerInterface {
         }
       }
       $response = $this->task->assembleResultResponse($results);
-      $this->finalizeTask($aggregator, $next_runnable, $this->getRunnerId());
+      $this->finalizeTask($aggregator, $this->getRunnerId());
       return $response;
     } else {
-      $this->finalizeRunner($results_this_runner, $aggregator, $next_runnable, $this->getRunnerId());
+      $this->finalizeRunner($results_this_runner, $next_runnable, $this->getRunnerId(), $aggregator);
       return NULL;
     }
   }
-
 }
