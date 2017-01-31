@@ -10,20 +10,41 @@ use mbaynton\BatchFramework\RunnableResultAggregatorInterface;
 use mbaynton\BatchFramework\RunnerInterface;
 use mbaynton\BatchFramework\TaskInterface;
 
-class TaskSleepMock implements TaskInterface {
+class TaskMock implements TaskInterface {
   /**
    * @var int $num_runnables
    */
   protected $num_runnables;
 
   /**
-   * @var int $ms_per_runnable
+   * @var int $num_on_complete
    */
-  protected $ms_per_runnable;
+  protected $num_on_complete = 0;
 
-  public function __construct($num_runnables, $ms_per_runnable) {
+  /**
+   * @var int $num_on_error
+   */
+  protected $num_on_error = 0;
+
+  /**
+   * @var callable $static_task_callable
+   */
+  public $static_task_callable;
+
+  /**
+   * TaskMock constructor.
+   * @param int $num_runnables
+   * @param callable|null $action
+   *   A specific thing for each Runner to actually do.
+   */
+  public function __construct($num_runnables, $action = NULL) {
     $this->num_runnables = $num_runnables;
-    $this->ms_per_runnable = $ms_per_runnable;
+
+    if (is_callable($action)) {
+      $this->static_task_callable = $action;
+    } else {
+      $this->static_task_callable = function() {};
+    }
   }
 
   public function getMaxRunners() {
@@ -36,7 +57,7 @@ class TaskSleepMock implements TaskInterface {
     } else {
       $next = $last_processed_runnable_id + $total_runners;
     }
-    return new RunnableSleepMockIterator($this, $next, $total_runners, $this->getNumRunnables(), $this->ms_per_runnable);
+    return new RunnableMockIterator($this, $next, $total_runners);
   }
 
   public function getNumRunnables() {
@@ -46,6 +67,7 @@ class TaskSleepMock implements TaskInterface {
   public function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator) {
     // This is a stupid example. Don't gratuitously collect meaningless result data in real code.
     // The more data, the worse the performance.
+    $this->num_on_complete++;
     $aggregator->collectResult($runnable, TRUE);
   }
 
@@ -58,6 +80,7 @@ class TaskSleepMock implements TaskInterface {
   }
 
   public function onRunnableError(RunnableInterface $runnable, $exception) {
+    $this->num_on_error++;
   }
 
   public function supportsUnaryPartialResult() {
@@ -70,5 +93,13 @@ class TaskSleepMock implements TaskInterface {
 
   public function assembleResultResponse($final_results) {
     return new Response(200, [], $final_results);
+  }
+
+  public function getNumCalls_onRunnableComplete() {
+    return $this->num_on_complete;
+  }
+
+  public function getNumCalls_onRunnableError() {
+    return $this->num_on_error;
   }
 }

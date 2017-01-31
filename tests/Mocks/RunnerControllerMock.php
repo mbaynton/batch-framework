@@ -12,6 +12,21 @@ class RunnerControllerMock implements RunnerControllerInterface {
   protected $should_continue_running = TRUE;
 
   /**
+   * @var int $num_on_before_started
+   */
+  protected $num_on_before_started = 0;
+
+  /**
+   * @var int $num_on_complete
+   */
+  protected $num_on_complete;
+
+  /**
+   * @var int $num_on_error
+   */
+  protected $num_on_error;
+
+  /**
    * RunnerControllerMock constructor.
    * @param int $num_runnables_per_incarnation
    *   Number of Runnables to process before shouldContinueRunning() is FALSE.
@@ -23,14 +38,16 @@ class RunnerControllerMock implements RunnerControllerInterface {
 
   public function onRunnableComplete(RunnableInterface $runnable, $result) {
     $this->num_runnables_left--;
+    $this->num_on_complete++;
   }
 
   public function onRunnableError(RunnableInterface $runnable, $exception) {
     $this->num_runnables_left--;
+    $this->num_on_error++;
   }
 
   public function onBeforeRunnableStarted(RunnableInterface $runnable) {
-    // TODO: Implement onBeforeRunnableStarted() method.
+    $this->num_on_before_started++;
   }
 
   public function shouldContinueRunning() {
@@ -40,5 +57,17 @@ class RunnerControllerMock implements RunnerControllerInterface {
       $this->should_continue_running = FALSE;
       return FALSE;
     }
+  }
+
+  public function getNumCalls_onRunnableComplete() {
+    return $this->num_on_complete;
+  }
+
+  public function getNumCalls_onBeforeRunnableStarted() {
+    return $this->num_on_before_started;
+  }
+
+  public function getNumCalls_onRunnableError() {
+    return $this->num_on_error;
   }
 }

@@ -5,8 +5,8 @@ namespace mbaynton\BatchFramework\Tests\Unit\Controller;
 
 use mbaynton\BatchFramework\Internal\TimeSource;
 use mbaynton\BatchFramework\TaskInterface;
-use mbaynton\BatchFramework\Tests\Mocks\RunnableSleepMock;
-use mbaynton\BatchFramework\Tests\Mocks\TaskSleepMock;
+use mbaynton\BatchFramework\Tests\Mocks\RunnableMock;
+use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
 
 class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
 
@@ -27,7 +27,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     parent::setUp();
 
     if (self::$task_dummy == NULL) {
-      self::$task_dummy = new TaskSleepMock(4, 0);
+      self::$task_dummy = new TaskMock(4, 0);
     }
   }
 
@@ -42,7 +42,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     ]);
 
     for ($i = 1; $i <= 6; $i++) {
-      $runnable = new RunnableSleepMock(self::$task_dummy, $i * 4, 0);
+      $runnable = new RunnableMock(self::$task_dummy, $i * 4, 0);
       $sut->onBeforeRunnableStarted($runnable);
       $sut->onRunnableComplete($runnable, $runnable->run());
       if (! $sut->shouldContinueRunning()) {
@@ -137,7 +137,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->never())->method('pcntl_signal_dispatch');
 
     for ($i = 1; $i <= 10; $i++) {
-      $runnable = new RunnableSleepMock(self::$task_dummy, $i * 4, 0);
+      $runnable = new RunnableMock(self::$task_dummy, $i * 4, 0);
       $sut->onBeforeRunnableStarted($runnable);
       $sut->onRunnableComplete($runnable, $runnable->run());
     }
@@ -153,7 +153,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->atLeast(5))->method('pcntl_signal_dispatch');
 
     for ($i = 1; $i <= 10; $i++) {
-      $runnable = new RunnableSleepMock(self::$task_dummy, $i * 4, 0);
+      $runnable = new RunnableMock(self::$task_dummy, $i * 4, 0);
       $sut->onBeforeRunnableStarted($runnable);
       $sut->onRunnableComplete($runnable, $runnable->run());
     }
@@ -163,7 +163,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $count = 0;
     $last_alarm = $this->ts->peekMicrotime();
     while ($sut->shouldContinueRunning() && $count <= $theoretical_max) {
-      $runnable = new RunnableSleepMock(self::$task_dummy, $count * 4, 0);
+      $runnable = new RunnableMock(self::$task_dummy, $count * 4, 0);
       $sut->onBeforeRunnableStarted($runnable);
       $this->ts->incrementMicrotime(
         (is_callable($increment_callback) ? $increment_callback($count) : $increment_callback)

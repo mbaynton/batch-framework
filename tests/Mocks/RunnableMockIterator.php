@@ -6,21 +6,18 @@ namespace mbaynton\BatchFramework\Tests\Mocks;
 
 use mbaynton\BatchFramework\AbstractRunnableIterator;
 
-class RunnableSleepMockIterator extends AbstractRunnableIterator {
+class RunnableMockIterator extends AbstractRunnableIterator {
   /**
-   * @var \mbaynton\BatchFramework\Tests\Mocks\TaskSleepMock $task
+   * @var \mbaynton\BatchFramework\Tests\Mocks\TaskMock $task
    */
   protected $task;
-  /**
-   * @var int $ms_per_runnable
-   */
-  protected $ms_per_runnable;
+
   /**
    * @var int $first
    */
   protected $first;
   /**
-   * @var RunnableSleepMock $current
+   * @var RunnableMock $current
    */
   protected $current;
   /**
@@ -32,9 +29,15 @@ class RunnableSleepMockIterator extends AbstractRunnableIterator {
    */
   protected $last;
 
-  public function __construct(TaskSleepMock $task, $first, $increment, $ms_per_runnable) {
+  /**
+   * RunnableSleepMockIterator constructor.
+   * @param \mbaynton\BatchFramework\Tests\Mocks\TaskMock $task
+   * @param int $first
+   * @param int $increment
+   * @param int $ms_per_runnable
+   */
+  public function __construct(TaskMock $task, $first, $increment) {
     $this->task = $task;
-    $this->ms_per_runnable = $ms_per_runnable;
     $this->first = $first;
     $this->increment = $increment;
     $this->last = $task->getNumRunnables() - 1;
@@ -42,11 +45,11 @@ class RunnableSleepMockIterator extends AbstractRunnableIterator {
   }
 
   protected function createCurrentRunnable($id) {
-    $this->current = new RunnableSleepMock($this->task, $id, $this->ms_per_runnable);
+    $this->current = new RunnableMock($this->task, $id);
   }
 
   /**
-   * @return RunnableSleepMock
+   * @return RunnableMock
    */
   public function current() {
     return $this->current;

@@ -5,12 +5,13 @@ namespace mbaynton\BatchFramework\Tests\Unit;
 
 
 use GuzzleHttp\Psr7\Response;
+use mbaynton\BatchFramework\RunnerInterface;
 use mbaynton\BatchFramework\ScheduledTask;
 use mbaynton\BatchFramework\ScheduledTaskInterface;
 use mbaynton\BatchFramework\TaskInterface;
 use mbaynton\BatchFramework\Tests\Mocks\RunnerControllerMock;
 use mbaynton\BatchFramework\Tests\Mocks\RunnerMock;
-use mbaynton\BatchFramework\Tests\Mocks\TaskSleepMock;
+use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
 
 class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   protected static $monotonic_runner_id = 0;
@@ -39,7 +40,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAbstractRunnerCompletesTask_OneIncarnation() {
-    $task = new TaskSleepMock(10, 0);
+    $task = new TaskMock(10, 0);
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
     $sut = $this->sutFactory(20, 1, $schedule);
     $result = $sut->run();
@@ -50,7 +51,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAbstractRunnerCompletesTask_MultipleIncarnations() {
-    $task = new TaskSleepMock(30, 0);
+    $task = new TaskMock(30, 0);
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
@@ -72,7 +73,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     // Like the above test, but finish the overall Task partway through the
     // last Runner lifecycle.
     $num_runnables = 25;
-    $task = new TaskSleepMock($num_runnables, 0);
+    $task = new TaskMock($num_runnables, 0);
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
@@ -91,21 +92,46 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAbstractRunnerCompletesTask_MultipleRunners_MultipleIncarnations() {
-    $task = new TaskSleepMock(30, 0);
+    $task = new TaskMock(30, 0);
     $this->_multipleRunners_MultipleIncarnations($task);
   }
 
-  public function testAbstractRunnerCompletesNonUnaryTasks() {
-    $task = $this->getMockBuilder('\mbaynton\BatchFramework\Tests\Mocks\TaskSleepMock')
+  public function testAbstractRunnerCompletesNonUnaryTasks_EvenRunnerMultiple() {
+    $this->_testAbstractRunnerCompletesNonUnaryTasks(30, TRUE);
+  }
+
+  public function testAbstractRunnerCompletesNonUnaryTasks_OddRunnerMultiple() {
+    $this->_testAbstractRunnerCompletesNonUnaryTasks(29, TRUE);
+  }
+
+  public function testAbstractRunnerCompletesNonreducableTasks_EvenRunnerMultiple() {
+    $this->_testAbstractRunnerCompletesNonUnaryTasks(30, FALSE);
+  }
+
+  public function testAbstractRunnerCompletesNonreducableTasks_OddRunnerMultiple() {
+    $this->_testAbstractRunnerCompletesNonUnaryTasks(29, FALSE);
+  }
+
+  protected function _testAbstractRunnerCompletesNonUnaryTasks($num_runners, $supports_reduction) {
+    $task = $this->getMockBuilder('\mbaynton\BatchFramework\Tests\Mocks\TaskMock')
       ->setMethods([
         'supportsUnaryPartialResult',
-        'assembleResultResponse'
+        'assembleResultResponse',
+        'supportsReduction'
       ])
       ->enableOriginalConstructor()
-      ->setConstructorArgs([30, 0])
+      ->setConstructorArgs([$num_runners, 0])
       ->getMock();
     $task->method('supportsUnaryPartialResult')->willReturn(FALSE);
-    $task->method('assembleResultResponse')->willReturnCallback(function($final_results) {
+    $task->method('supportsReduction')->willReturn($supports_reduction);
+    $task->method('assembleResultResponse')->willReturnCallback(function($final_results) use($supports_reduction) {
+      if (! $supports_reduction) {
+        $merged_results = [];
+        while(($next_result = array_shift($final_results)) !== NULL) {
+          $merged_results = array_merge($next_result, $merged_results);
+        }
+        $final_results = $merged_results;
+      }
       return new Response(200, [], array_sum($final_results));
     });
 
@@ -144,5 +170,57 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     );
   }
 
+  public function testSuccessRunnableEvents() {
+    $this->_testRunnableEvents(TRUE);
+  }
 
+  public function testErrorRunnableEvents() {
+    $this->_testRunnableEvents(FALSE);
+  }
+
+  protected function _testRunnableEvents($runner_succeeds) {
+    $num_runnables = 2;
+
+    $controller = new RunnerControllerMock(-1);
+    $runner = new RunnerMock($controller, self::$monotonic_runner_id++);
+    $task = new TaskMock($num_runnables);
+
+    if (! $runner_succeeds) {
+      $task->static_task_callable = function() {
+        throw new \Exception('Mocked runnable error.');
+      };
+    }
+
+    $runner->attachScheduledTask(
+      new ScheduledTask($task, $this->assignTaskId(), [$runner->getRunnerId()], '-')
+    );
+    $runner->run();
+
+    if ($runner_succeeds) {
+      $this->assertEquals(
+        $num_runnables,
+        $controller->getNumCalls_onBeforeRunnableStarted()
+      );
+
+      $this->assertEquals(
+        $num_runnables,
+        $controller->getNumCalls_onRunnableComplete()
+      );
+
+      $this->assertEquals(
+        $num_runnables,
+        $task->getNumCalls_onRunnableComplete()
+      );
+    } else {
+      $this->assertEquals(
+        $num_runnables,
+        $controller->getNumCalls_onRunnableError()
+      );
+
+      $this->assertEquals(
+        $num_runnables,
+        $task->getNumCalls_onRunnableError()
+      );
+    }
+  }
 }
