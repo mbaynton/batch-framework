@@ -259,6 +259,7 @@ trait HttpRunnerControllerTrait {
 
   protected function clockDecremented() {
     $this->clock_decrement_count++;
+
     /*
      * If we've caught the clock decrementing 5 times, just stop.
      * This can happen e.g. if ntpd is slewing the sysclock backwards while
@@ -267,6 +268,14 @@ trait HttpRunnerControllerTrait {
      */
     if ($this->clock_decrement_count >= 5) {
       $this->should_continue_running = FALSE;
+    }
+
+    /*
+     * If we've been unable to get any valid-looking time readings, no value
+     * will be computed for runnables_this_request; allow 5 runnables.
+     */
+    if ($this->total_runnables_this_request === NULL) {
+      $this->total_runnables_this_request = 5;
     }
   }
 
