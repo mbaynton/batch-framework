@@ -50,6 +50,12 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
       }
     }
 
+    $this->assertEquals(
+      5,
+      $i,
+      'Exactly 5 runnables are scheduled while system clock is decrementing.'
+    );
+
     $this->assertFalse(
       $sut->shouldContinueRunning(),
       'Stop if clock is found to continually decrement.'
@@ -159,16 +165,20 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     }
   }
 
-  protected function simulateRunning(HttpRunnerController $sut, $increment_callback, $theoretical_max) {
+  protected function simulateRunning(HttpRunnerController $sut, $increment_callback, $theoretical_max_runnables, $runnable_succeeds = TRUE) {
     $count = 0;
     $last_alarm = $this->ts->peekMicrotime();
-    while ($sut->shouldContinueRunning() && $count <= $theoretical_max) {
+    while ($sut->shouldContinueRunning() && $count <= $theoretical_max_runnables) {
       $runnable = new RunnableMock(self::$task_dummy, $count * 4, 0);
       $sut->onBeforeRunnableStarted($runnable);
       $this->ts->incrementMicrotime(
         (is_callable($increment_callback) ? $increment_callback($count) : $increment_callback)
       );
-      $sut->onRunnableComplete($runnable, $runnable->run());
+      if ($runnable_succeeds) {
+        $sut->onRunnableComplete($runnable, $runnable->run());
+      } else {
+        $sut->onRunnableError($runnable, new \Exception('Pretend exception as prescribed by tests.'));
+      }
       $count++;
       if ($this->ts->peekMicrotime() - $last_alarm >= 1e6) {
         $this->ts->triggerAlarm();
@@ -177,12 +187,90 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     }
 
     $this->assertLessThanOrEqual(
-      $theoretical_max,
+      $theoretical_max_runnables,
       $count,
-      'Contant-time runnables are over-scheduled.'
+      'Runnables were over-scheduled.'
     );
 
     return $count;
+  }
+
+  public function testVariableRuntimes_FastToSlow_AreWellScheduled() {
+    $target_seconds = 6;
+
+    foreach ([TRUE, FALSE] as $alarm_signal_works) {
+      $sut = $this->sutFactory([
+        'measured_time' => 0, // no auto-increment
+        'alarm_signal_works' => $alarm_signal_works,
+        'target_completion_seconds' => $target_seconds,
+      ]);
+
+      // With radically different runtimes and no alarm signal, quite a bit
+      // of overrun is permissible.
+      $theoretical_target_walltime = $alarm_signal_works
+        ? (($target_seconds + 1.2) * 1e6) + $this->ts->peekMicrotime()
+        : (($target_seconds + 7) * 1e6) + $this->ts->peekMicrotime();
+
+      $count = $this->simulateRunning($sut,
+        function ($count) {
+          if ($count < 8) {
+            return 5e4; // 20 runnables / sec
+          }
+          else {
+            return 1e6; // 1 runnable / sec
+          }
+        },
+        50
+      );
+
+      $this->assertLessThanOrEqual(
+        $theoretical_target_walltime,
+        $this->ts->peekMicrotime(),
+        'Fast then slow runnables result in executing substantially longer than target seconds.'
+      );
+      $this->assertGreaterThanOrEqual(
+        13,
+        $count,
+        'Fast then slow runnables are under-scheduled within target seconds.'
+      );
+    }
+  }
+
+  public function testVariableRuntimes_SlowToFast_AreWellScheduled() {
+    $target_seconds = 20;
+
+    foreach ([TRUE, FALSE] as $alarm_signal_works) {
+      $sut = $this->sutFactory([
+        'measured_time' => 0, // no auto-increment
+        'alarm_signal_works' => $alarm_signal_works,
+        'target_completion_seconds' => $target_seconds,
+      ]);
+
+      $theoretical_target_walltime = (($target_seconds + 1.2) * 1e6) + $this->ts->peekMicrotime();
+
+      $count = $this->simulateRunning($sut,
+        function ($count) {
+          if ($count < 8) {
+            return 1e6; // 1 runnable / sec
+          }
+          else {
+            return 5e4; // 20 runnables / sec
+          }
+        },
+        250
+      );
+
+      $this->assertLessThanOrEqual(
+        $theoretical_target_walltime,
+        $this->ts->peekMicrotime(),
+        'Slow then fast runnables result in executing substantially longer than target seconds.'
+      );
+      $this->assertGreaterThanOrEqual(
+        211, // 85% of the 248 runnables if 20 seconds were perfectly scheduled
+        $count,
+        'Fast then slow runnables are under-scheduled within target seconds.'
+      );
+    }
   }
 
   public function testMicrotimeCallCount() {
@@ -290,6 +378,38 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
         $max_walltime,
         $this->ts->peekMicrotime(),
         'When controlling long runnables, acceptable overage from target runtime exceeded.'
+      );
+    }
+  }
+
+  public function testFailingRunnablesDoNotAffectScheduler() {
+    $target_seconds = 8;
+
+    foreach ([TRUE, FALSE] as $alarm_signal_works) {
+      $sut = $this->sutFactory([
+        'measured_time' => 1e6,
+        'alarm_signal_works' => $alarm_signal_works,
+        'target_completion_seconds' => $target_seconds,
+      ]);
+
+      $theoretical_target_walltime = (($target_seconds + 1.01) * 1e6) + $this->ts->peekMicrotime();
+
+      $count = $this->simulateRunning(
+        $sut,
+        0,
+        8,
+        FALSE
+      );
+
+      $this->assertLessThanOrEqual(
+        $theoretical_target_walltime,
+        $this->ts->peekMicrotime(),
+        'Failing runnables result in executing substantially longer than target seconds.'
+      );
+      $this->assertGreaterThanOrEqual(
+        8,
+        $count,
+        'Failing runnables are under-scheduled within target seconds.'
       );
     }
   }
