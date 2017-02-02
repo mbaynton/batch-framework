@@ -11,9 +11,9 @@ use mbaynton\BatchFramework\RunnableInterface;
  */
 interface RunnerControllerInterface {
   /**
-   * Tests whether the Runner should process another Runnable.
+   * Tests whether the Runner should continue processing Runnables.
    *
-   * RunnerInterface implementations should test this before each Runnable.
+   * RunnerInterface implementations should test this at reasonable intervals.
    *
    * @return bool
    */
