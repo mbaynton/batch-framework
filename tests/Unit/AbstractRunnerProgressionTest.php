@@ -1,14 +1,17 @@
 <?php
 
-namespace mbaynton\BatchFramework\Tests\Unit\Controller;
+namespace mbaynton\BatchFramework\Tests\Unit;
 
 
 use mbaynton\BatchFramework\Internal\TimeSource;
+use mbaynton\BatchFramework\ScheduledTask;
 use mbaynton\BatchFramework\TaskInterface;
 use mbaynton\BatchFramework\Tests\Mocks\RunnableMock;
+use mbaynton\BatchFramework\Tests\Mocks\RunnerControllerMock;
+use mbaynton\BatchFramework\Tests\Mocks\RunnerMock;
 use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
 
-class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
+class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
   const TIMESOURCECLASS = '\mbaynton\BatchFramework\Internal\TimeSource';
 
@@ -19,59 +22,15 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
   protected $ts;
 
   /**
-   * @var TaskInterface $task_dummy
-   */
-  protected static $task_dummy = NULL;
-
-  public function setUp() {
-    parent::setUp();
-
-    if (self::$task_dummy == NULL) {
-      self::$task_dummy = new TaskMock(4, 0);
-    }
-  }
-
-  public function testShouldContinueRunningAtBeginning() {
-    $sut = new HttpRunnerController(new TimeSource(), FALSE);
-    $this->assertTrue($sut->shouldContinueRunning());
-  }
-
-  public function testAdjustedSystemClock() {
-    $sut = $this->sutFactory([
-      'measured_time' => -10e3,
-    ]);
-
-    for ($i = 1; $i <= 6; $i++) {
-      $runnable = new RunnableMock(self::$task_dummy, $i * 4, 0);
-      $sut->onBeforeRunnableStarted($runnable);
-      $sut->onRunnableComplete($runnable, $runnable->run());
-      if (! $sut->shouldContinueRunning()) {
-        break;
-      }
-    }
-
-    $this->assertEquals(
-      5,
-      $i,
-      'Exactly 5 runnables are scheduled while system clock is decrementing.'
-    );
-
-    $this->assertFalse(
-      $sut->shouldContinueRunning(),
-      'Stop if clock is found to continually decrement.'
-    );
-  }
-
-  /**
    * @param array $opts
    *  'measured_time': Number of microseconds to report walltime has changed on
    *                   each call to microtime().
    *  'alarm_signal_works': See HttpRunnerControllerTrait::onCreate().
    *  'target_completion_seconds': See HttpRunnerControllerTrait::onCreate().
    *
-   * @return HttpRunnerController
+   * @return RunnerMock
    */
-  protected function sutFactory($opts = []) {
+  protected function sutFactory($task, $opts = []) {
     $ts = $this->getMockBuilder(self::TIMESOURCECLASS)
       ->setMethods([
         'pcntl_alarm',
@@ -130,11 +89,39 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
 
     $use_signaling = !empty($opts['alarm_signal_works']);
     $target_seconds = (array_key_exists('target_completion_seconds', $opts) ? $opts['target_completion_seconds'] : 30);
-    return new HttpRunnerController($ts, $use_signaling, $target_seconds);
+    $sut = new RunnerMock(new RunnerControllerMock(), $ts, AbstractRunnerTest::$monotonic_runner_id++, $target_seconds, $use_signaling);
+
+    if ($task !== NULL) {
+      $scheduledTask = new ScheduledTask($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-');
+      $sut->attachScheduledTask($scheduledTask);
+    }
+
+    return $sut;
+  }
+
+  public function testAdjustedSystemClock() {
+    $sut = $this->sutFactory(
+      new TaskMock(8),
+      [
+      'measured_time' => -10e3,
+      ]);
+
+    $sut->run();
+
+    $this->assertEquals(
+      5,
+      $sut->runnables_processed_this_incarnation,
+      'Exactly 5 runnables are scheduled while system clock is decrementing.'
+    );
+
+    $this->assertFalse(
+      $sut->shouldContinueRunning(),
+      'Stop if clock is found to continually decrement.'
+    );
   }
 
   public function testLongRunnablesDisableTimeAveraging() {
-    $sut = $this->sutFactory([
+    $sut = $this->sutFactory(new TaskMock(10), [
       'measured_time' => 1e6,
       'alarm_signal_works' => TRUE,
     ]);
@@ -142,15 +129,11 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->never())->method('pcntl_alarm');
     $this->ts->expects($this->never())->method('pcntl_signal_dispatch');
 
-    for ($i = 1; $i <= 10; $i++) {
-      $runnable = new RunnableMock(self::$task_dummy, $i * 4, 0);
-      $sut->onBeforeRunnableStarted($runnable);
-      $sut->onRunnableComplete($runnable, $runnable->run());
-    }
+    $sut->run();
   }
 
   public function testShortRunnablesEngageTimeAveraging() {
-    $sut = $this->sutFactory([
+    $sut = $this->sutFactory(new TaskMock(10), [
       'measured_time' => 1000,
       'alarm_signal_works' => TRUE
     ]);
@@ -158,48 +141,30 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->atLeastOnce())->method('pcntl_alarm');
     $this->ts->expects($this->atLeast(5))->method('pcntl_signal_dispatch');
 
-    for ($i = 1; $i <= 10; $i++) {
-      $runnable = new RunnableMock(self::$task_dummy, $i * 4, 0);
-      $sut->onBeforeRunnableStarted($runnable);
-      $sut->onRunnableComplete($runnable, $runnable->run());
-    }
+    $sut->run();
   }
 
-  protected function simulateRunning(HttpRunnerController $sut, $increment_callback, $theoretical_max_runnables, $runnable_succeeds = TRUE) {
-    $count = 0;
-    $last_alarm = $this->ts->peekMicrotime();
-    while ($sut->shouldContinueRunning() && $count <= $theoretical_max_runnables) {
-      $runnable = new RunnableMock(self::$task_dummy, $count * 4, 0);
-      $sut->onBeforeRunnableStarted($runnable);
-      $this->ts->incrementMicrotime(
-        (is_callable($increment_callback) ? $increment_callback($count) : $increment_callback)
-      );
-      if ($runnable_succeeds) {
-        $sut->onRunnableComplete($runnable, $runnable->run());
-      } else {
-        $sut->onRunnableError($runnable, new \Exception('Pretend exception as prescribed by tests.'));
-      }
-      $count++;
-      if ($this->ts->peekMicrotime() - $last_alarm >= 1e6) {
-        $this->ts->triggerAlarm();
-        $last_alarm = $this->ts->peekMicrotime();
-      }
+  protected function simulateRunning(RunnerMock $sut, $increment_callback, $theoretical_max_runnables) {
+    if ($increment_callback) {
+      $sut->setIncrementCallback($increment_callback);
     }
+
+    $sut->run();
 
     $this->assertLessThanOrEqual(
       $theoretical_max_runnables,
-      $count,
+      $sut->runnables_processed_this_incarnation,
       'Runnables were over-scheduled.'
     );
 
-    return $count;
+    return $sut->runnables_processed_this_incarnation;
   }
 
   public function testVariableRuntimes_FastToSlow_AreWellScheduled() {
-    $target_seconds = 6;
+    $target_seconds = 7;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory([
+      $sut = $this->sutFactory(new TaskMock(50), [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -212,8 +177,8 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
         : (($target_seconds + 7) * 1e6) + $this->ts->peekMicrotime();
 
       $count = $this->simulateRunning($sut,
-        function ($count) {
-          if ($count < 8) {
+        function ($n) {
+          if ($n < 8) {
             return 5e4; // 20 runnables / sec
           }
           else {
@@ -240,7 +205,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 20;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory([
+      $sut = $this->sutFactory(new TaskMock(251), [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -250,7 +215,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
 
       $count = $this->simulateRunning($sut,
         function ($count) {
-          if ($count < 8) {
+          if ($count <= 8) {
             return 1e6; // 1 runnable / sec
           }
           else {
@@ -283,7 +248,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max_microtime_calls = ($target_seconds / 0.7) + $startup_constant;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory([
+      $sut = $this->sutFactory(new TaskMock($theoretical_max + 1), [
         'measured_time' => 0,
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => 10,
@@ -320,7 +285,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max = ($target_seconds * 10e5) / $runnable_duration_usecs;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory([
+      $sut = $this->sutFactory(new TaskMock($theoretical_max + 1), [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -355,7 +320,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max = ($target_seconds * 1e6) / $runnable_duration_usecs;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory([
+      $sut = $this->sutFactory(new TaskMock($theoretical_max + 1), [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -386,7 +351,10 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 8;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory([
+      $sut = $this->sutFactory(new TaskMock(10, function() {
+        throw new \Exception ('Simulated failure in runnable');
+        }),
+        [
         'measured_time' => 1e6,
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -397,8 +365,7 @@ class HttpRunnerControllerTraitTest extends \PHPUnit_Framework_TestCase {
       $count = $this->simulateRunning(
         $sut,
         0,
-        8,
-        FALSE
+        8
       );
 
       $this->assertLessThanOrEqual(

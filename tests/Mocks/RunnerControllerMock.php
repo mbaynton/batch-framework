@@ -26,16 +26,6 @@ class RunnerControllerMock implements RunnerControllerInterface {
    */
   protected $num_on_error;
 
-  /**
-   * RunnerControllerMock constructor.
-   * @param int $num_runnables_per_incarnation
-   *   Number of Runnables to process before shouldContinueRunning() is FALSE.
-   *   Values less than 0 allow infinite Runnables.
-   */
-  public function __construct($num_runnables_per_incarnation) {
-    $this->num_runnables_left = $num_runnables_per_incarnation;
-  }
-
   public function onRunnableComplete(RunnableInterface $runnable, $result) {
     $this->num_runnables_left--;
     $this->num_on_complete++;
@@ -50,13 +40,13 @@ class RunnerControllerMock implements RunnerControllerInterface {
     $this->num_on_before_started++;
   }
 
+  /*
+   * Controller no longer holds primary responsibility for deciding how many
+   * Runnables to execute -- in order to test AbstractRunner's internal logic,
+   * we do not limit Runnables in this mock anymore.
+   */
   public function shouldContinueRunning() {
-    if ($this->num_runnables_left !== 0 && $this->should_continue_running) {
-      return TRUE;
-    } else {
-      $this->should_continue_running = FALSE;
-      return FALSE;
-    }
+    return TRUE;
   }
 
   public function getNumCalls_onRunnableComplete() {

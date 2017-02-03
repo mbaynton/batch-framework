@@ -22,15 +22,83 @@ class RunnerMock extends AbstractRunner {
 
   protected $runner_id;
 
-  public function __construct(RunnerControllerInterface $controller, $runner_id) {
+  protected $runnables_left;
+
+  public $runnables_processed_this_incarnation = 0;
+
+  protected $increment_callback = NULL;
+
+  protected $last_alarm = NULL;
+
+  /**
+   * RunnerMock constructor.
+   * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
+   * @param \mbaynton\BatchFramework\Internal\TimeSource $time_source
+   * @param int $runner_id
+   * @param bool $target_completion_seconds
+   * @param $alarm_signal_works
+   * @param int|null $runnables_per_incarnation
+   *   If non-null, this will totally override AbstractRunner's decision-making
+   *   about continuing to execute Runnables. Useful in tests that want to
+   *   assure a certain number of incarnations are used.
+   */
+  public function __construct(RunnerControllerInterface $controller, $time_source, $runner_id, $target_completion_seconds, $alarm_signal_works, $runnables_per_incarnation = NULL) {
     $this->runner_id = $runner_id;
     $this->controller = $controller;
+    $this->runnables_left = $runnables_per_incarnation;
 
     if (! array_key_exists($this->runner_id, self::$cache_by_id)) {
       self::$cache_by_id[$this->runner_id] = [];
     }
 
-    parent::__construct($controller);
+    parent::__construct($controller, $time_source, $target_completion_seconds, $alarm_signal_works);
+
+    if ($this->time_source instanceof \PHPUnit_Framework_MockObject_MockObject) {
+      $this->last_alarm = $this->time_source->peekMicrotime();
+    }
+  }
+
+  public function setIncrementCallback($increment) {
+    if ($this->time_source instanceof \PHPUnit_Framework_MockObject_MockObject) {
+      $this->increment_callback = $increment;
+    } else {
+      throw new \LogicException('Increment callbacks only work on \PHPUnit_Framework_MockObject_MockObject mocked time sources.');
+    }
+  }
+
+  public function shouldContinueRunning() {
+    if ($this->runnables_left !== NULL) {
+      return $this->runnables_left != 0;
+    } else {
+      return parent::shouldContinueRunning();
+    }
+  }
+
+  protected function runnableDone() {
+    if ($this->runnables_left !== NULL) {
+      $this->runnables_left--;
+    }
+    $this->runnables_processed_this_incarnation++;
+
+    if ($this->increment_callback) {
+      $callback = $this->increment_callback;
+      if (is_callable($callback)) {
+        $this->time_source->incrementMicrotime(
+          $callback($this->runnables_processed_this_incarnation)
+        );
+      } else {
+        $this->time_source->incrementMicrotime($callback);
+      }
+    }
+
+    if ($this->last_alarm !== NULL) {
+      if ($this->time_source->peekMicrotime() - $this->last_alarm >= 1e6) {
+        $this->time_source->triggerAlarm();
+        $this->last_alarm = $this->time_source->peekMicrotime();
+      }
+    }
+
+    return parent::runnableDone();
   }
 
   public function attachScheduledTask(ScheduledTaskInterface $scheduledTask) {

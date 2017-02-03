@@ -5,7 +5,6 @@ namespace mbaynton\BatchFramework\Tests\Unit;
 
 
 use GuzzleHttp\Psr7\Response;
-use mbaynton\BatchFramework\RunnerInterface;
 use mbaynton\BatchFramework\ScheduledTask;
 use mbaynton\BatchFramework\ScheduledTaskInterface;
 use mbaynton\BatchFramework\TaskInterface;
@@ -13,16 +12,115 @@ use mbaynton\BatchFramework\Tests\Mocks\RunnerControllerMock;
 use mbaynton\BatchFramework\Tests\Mocks\RunnerMock;
 use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
 
+/**
+ * Class AbstractRunnerTest
+ *   Tests of all AbstractRunner functionality *except* those related to
+ *   measuring the passage of time, computing expected runnable duration,
+ *   and deciding how many Runnables to execute per incarnation. Those are in
+ *   AbstractRunnerProgressionTest.
+ */
 class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
-  protected static $monotonic_runner_id = 0;
-  protected static $monotonic_task_id = 0;
+  const TIMESOURCECLASS = '\mbaynton\BatchFramework\Internal\TimeSource';
 
-  protected function sutFactory($num_runnables_per_incarnation, $id = NULL, ScheduledTaskInterface $scheduledTask = NULL) {
-    $controller = new RunnerControllerMock($num_runnables_per_incarnation);
+  public static $monotonic_runner_id = 0;
+  public static $monotonic_task_id = 0;
+
+  /**
+   * @var \PHPUnit_Framework_MockObject_MockObject $ts
+   *   The last TimeSource mock associated to the last sutFactory() call.
+   */
+  protected $ts;
+
+  /**
+   * @param int|null $num_runnables_per_incarnation
+   *   If provided, exactly this many Runnables will execute per incarnation,
+   *   so for use in tests of things other than the number-of-runnables logic.
+   * @param int|null $id
+   * @param \mbaynton\BatchFramework\ScheduledTaskInterface|NULL $scheduledTask
+   * @param array $opts
+   *  'measured_time': Number of microseconds to report walltime has changed on
+   *                   each call to microtime().
+   *  'alarm_signal_works': See HttpRunnerControllerTrait::onCreate().
+   *  'target_completion_seconds': See HttpRunnerControllerTrait::onCreate().
+   *  'controller': An instance of a specific RunnerControllerInterface
+   *                implementation to use.
+   *
+   * @return \mbaynton\BatchFramework\Tests\Mocks\RunnerMock
+   */
+  protected function sutFactory($num_runnables_per_incarnation = NULL, $id = NULL, ScheduledTaskInterface $scheduledTask = NULL, $opts = []) {
+    if (array_key_exists('controller', $opts)) {
+      $controller = $opts['controller'];
+    } else {
+      $controller = new RunnerControllerMock();
+    }
+
+    /**** SET UP TIME SOURCE *****/
+    $ts = $this->getMockBuilder(self::TIMESOURCECLASS)
+      ->setMethods([
+        'pcntl_alarm',
+        'pcntl_signal',
+        'pcntl_signal_dispatch',
+        'microtime',
+        'peekMicrotime',
+        'incrementMicrotime',
+        'peekAlarmSecs',
+        'triggerAlarm',
+      ])
+      ->getMock();
+
+    $alarm_secs = NULL;
+    $ts->method('pcntl_alarm')->willReturnCallback(function($seconds) use (&$alarm_secs) {
+      $alarm_secs = $seconds;
+      return TRUE;
+    });
+
+    $signals = [];
+    $ts->method('pcntl_signal')->willReturnCallback(function($signo, $callback) use (&$signals) {
+      $signals[$signo] = $callback;
+      return TRUE;
+    });
+
+    $ts->method('peekAlarmSecs')->willReturnCallback(function() use (&$alarm_secs) {
+      return $alarm_secs;
+    });
+
+    $alarm_triggered = FALSE;
+    $ts->method('triggerAlarm')->willReturnCallback(function() use (&$alarm_triggered) {
+      $alarm_triggered = TRUE;
+    });
+
+    $ts->method('pcntl_signal_dispatch')->willReturnCallback(function() use (&$alarm_triggered, &$signals) {
+      if ($alarm_triggered && is_callable($signals[SIGALRM])) {
+        $signals[SIGALRM](SIGALRM, NULL);
+      }
+      $alarm_triggered = FALSE;
+    });
+
+    $faketime = 10e9;
+    $increment = (array_key_exists('measured_time', $opts) ? $opts['measured_time'] : 500000); // .5 sec
+    $ts->method('microtime')->willReturnCallback(function() use(&$faketime, $increment) {
+      $faketime += $increment;
+      return $faketime;
+    });
+    $ts->method('peekMicrotime')->willReturnCallback(function() use(&$faketime) {
+      return $faketime;
+    });
+    $ts->method('incrementMicrotime')->willReturnCallback(function($increment) use (&$faketime) {
+      $faketime += $increment;
+    });
+
+    $this->ts = $ts;
+
+    /**** END SET UP TIME SOURCE ****/
+
     if ($id === NULL) {
       $id = self::$monotonic_runner_id++;
     }
-    $sut = new RunnerMock($controller, $id);
+
+    $alarm_signal_works = !empty($opts['alarm_signal_works']);
+    $target_seconds = (array_key_exists('target_completion_seconds', $opts) ? $opts['target_completion_seconds'] : 30);
+
+    $sut = new RunnerMock($controller, $ts, $id, $target_seconds, $alarm_signal_works, $num_runnables_per_incarnation);
 
     if ($scheduledTask !== NULL) {
       $sut->attachScheduledTask($scheduledTask);
@@ -181,19 +279,18 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   protected function _testRunnableEvents($runner_succeeds) {
     $num_runnables = 2;
 
-    $controller = new RunnerControllerMock(-1);
-    $runner = new RunnerMock($controller, self::$monotonic_runner_id++);
-    $task = new TaskMock($num_runnables);
+    $controller = new RunnerControllerMock();
 
+    $task = new TaskMock($num_runnables);
     if (! $runner_succeeds) {
       $task->static_task_callable = function() {
         throw new \Exception('Mocked runnable error.');
       };
     }
+    $scheduled_task = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
 
-    $runner->attachScheduledTask(
-      new ScheduledTask($task, $this->assignTaskId(), [$runner->getRunnerId()], '-')
-    );
+    $runner = $this->sutFactory(-1, 1, $scheduled_task, ['controller' => $controller]);
+
     $runner->run();
 
     if ($runner_succeeds) {
