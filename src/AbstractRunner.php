@@ -4,6 +4,7 @@
 namespace mbaynton\BatchFramework;
 
 use mbaynton\BatchFramework\Controller\RunnerControllerInterface;
+use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\Internal\TimeSource;
 use Psr\Http\Message\ResponseInterface;
 
@@ -119,6 +120,11 @@ abstract class AbstractRunner implements RunnerInterface {
    * @var bool $should_continue_running
    */
   protected $should_continue_running;
+
+  /**
+   * @var ProgressInfo $progress_struct
+   */
+  protected $progress_struct;
 
 
   /**
@@ -276,15 +282,15 @@ abstract class AbstractRunner implements RunnerInterface {
         $result = $next_runnable->run();
         $success = TRUE;
       } catch (\Exception $e) {
-        $this->runnableDone();
-        $this->task->onRunnableError($next_runnable, $e);
-        $this->controller->onRunnableError($next_runnable, $e);
+        $progress = $this->runnableDone();
+        $this->task->onRunnableError($next_runnable, $e, $progress);
+        $this->controller->onRunnableError($next_runnable, $e, $progress);
       }
 
       if ($success) {
-        $this->runnableDone();
-        $this->task->onRunnableComplete($next_runnable, $result, $aggregator);
-        $this->controller->onRunnableComplete($next_runnable, $result);
+        $progress = $this->runnableDone();
+        $this->task->onRunnableComplete($next_runnable, $result, $aggregator, $progress);
+        $this->controller->onRunnableComplete($next_runnable, $result, $progress);
       }
 
       if ($this->shouldContinueRunning()) {
@@ -348,15 +354,24 @@ abstract class AbstractRunner implements RunnerInterface {
     }
   }
 
+  /**
+   * @return \mbaynton\BatchFramework\Datatype\ProgressInfo
+   */
   protected function runnableDone() {
     $this->runnables_since_last_measurement++;
     $this->runnables_since_request_start++;
 
     if (($new_measured_walltime = $this->shouldRemeasureWalltime()) !== 0.0) {
       if ($new_measured_walltime >= $this->last_measured_walltime) {
+        $progress = new ProgressInfo();
+        $this->progress_struct = $progress;
+        $progress->timeElapsed = $new_measured_walltime - $this->start_walltime;
+        $progress->timeElapsedIsEstimated = FALSE;
+
         $average_runnable_time = ($new_measured_walltime - $this->last_measured_walltime) / $this->runnables_since_last_measurement;
         $new_runnable_estimate = $this->recordRuntime($average_runnable_time, $this->runnables_since_last_measurement);
         $this->recomputeTotalRunnables($new_measured_walltime, $new_runnable_estimate);
+        $progress->estimatedRunnablesRemaining = max($this->total_runnables_this_request - $this->runnables_since_request_start, 0);
 
         // As we approach 1 second per runnable, averaging measurements won't
         // provide performance gain.
@@ -367,6 +382,7 @@ abstract class AbstractRunner implements RunnerInterface {
         }
       } else {
         $this->clockDecremented();
+        $progress = $this->interpolateNewProgress();
       }
       $this->last_measured_walltime = $new_measured_walltime;
       $this->runnables_since_last_measurement = 0;
@@ -375,11 +391,24 @@ abstract class AbstractRunner implements RunnerInterface {
       if (! $this->controller->shouldContinueRunning()) {
         $this->should_continue_running = FALSE;
       }
+    } else {
+      $progress = $this->interpolateNewProgress();
     }
 
     if ($this->runnables_since_request_start >= $this->total_runnables_this_request) {
       $this->should_continue_running = FALSE;
     }
+
+    return $progress;
+  }
+
+  protected function interpolateNewProgress() {
+    $this->progress_struct->estimatedRunnablesRemaining = max($this->total_runnables_this_request - $this->runnables_since_request_start, 0);
+    $this->progress_struct->timeElapsedIsEstimated = TRUE;
+    $this->progress_struct->timeElapsed += $this->runnable_runtime_estimate;
+    $this->progress_struct->runnablesExecuted = $this->runnables_since_request_start;
+
+    return clone $this->progress_struct;
   }
 
   protected function recordRuntime($average_runnable_time, $num_runnables) {
@@ -485,6 +514,13 @@ abstract class AbstractRunner implements RunnerInterface {
      */
     if ($this->total_runnables_this_request === NULL) {
       $this->total_runnables_this_request = 5;
+    }
+    if ($this->progress_struct === NULL) {
+      $this->progress_struct = new ProgressInfo();
+      $this->progress_struct->runnablesExecuted = $this->runnables_since_request_start;
+      $this->progress_struct->timeElapsed = 0;
+      $this->progress_struct->timeElapsedIsEstimated = TRUE;
+      $this->progress_struct->estimatedRunnablesRemaining = max($this->total_runnables_this_request - $this->runnables_since_request_start, 0);
     }
   }
 
