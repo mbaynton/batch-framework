@@ -5,6 +5,7 @@ namespace mbaynton\BatchFramework\Tests\Mocks;
 
 
 use GuzzleHttp\Psr7\Response;
+use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\RunnableInterface;
 use mbaynton\BatchFramework\RunnableResultAggregatorInterface;
 use mbaynton\BatchFramework\RunnerInterface;
@@ -64,7 +65,7 @@ class TaskMock implements TaskInterface {
     return $this->num_runnables;
   }
 
-  public function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator) {
+  public function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress) {
     // This is a stupid example. Don't gratuitously collect meaningless result data in real code.
     // The more data, the worse the performance.
     $this->num_on_complete++;
@@ -79,7 +80,7 @@ class TaskMock implements TaskInterface {
     return count($aggregator->getCollectedResults());
   }
 
-  public function onRunnableError(RunnableInterface $runnable, $exception) {
+  public function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress) {
     $this->num_on_error++;
   }
 

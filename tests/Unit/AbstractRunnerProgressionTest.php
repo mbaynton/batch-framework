@@ -3,6 +3,7 @@
 namespace mbaynton\BatchFramework\Tests\Unit;
 
 
+use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\Internal\TimeSource;
 use mbaynton\BatchFramework\ScheduledTask;
 use mbaynton\BatchFramework\TaskInterface;
@@ -89,7 +90,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
     $use_signaling = !empty($opts['alarm_signal_works']);
     $target_seconds = (array_key_exists('target_completion_seconds', $opts) ? $opts['target_completion_seconds'] : 30);
-    $sut = new RunnerMock(new RunnerControllerMock(), $ts, AbstractRunnerTest::$monotonic_runner_id++, $target_seconds, $use_signaling);
+    if (array_key_exists('controller', $opts) && $opts['controller']) {
+      $controller = $opts['controller'];
+    }  else {
+      $controller = new RunnerControllerMock();
+    }
+    $sut = new RunnerMock($controller, $ts, AbstractRunnerTest::$monotonic_runner_id++, $target_seconds, $use_signaling);
 
     if ($task !== NULL) {
       $scheduledTask = new ScheduledTask($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-');
@@ -142,6 +148,76 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->atLeast(5))->method('pcntl_signal_dispatch');
 
     $sut->run();
+  }
+
+  /**
+   * @return \PHPUnit_Framework_MockObject_MockObject
+   *   A controller suitable for adding expectations to.
+   */
+  protected function progressObservationControllerFactory() {
+    $controller = $this->getMockBuilder('\\mbaynton\\BatchFramework\\Controller\\RunnerControllerInterface')
+      ->setMethods([
+        'shouldContinueRunning',
+        'onBeforeRunnableStarted',
+        'onRunnableComplete',
+        'onRunnableError'
+      ])
+      ->getMock();
+
+    $controller->method('shouldContinueRunning')->willReturn(TRUE);
+
+    return $controller;
+  }
+
+  public function testLongRunnablesGiveAccurateProgressInfo() {
+    $num_runnables = 15;
+    $time_per_runnable = 1e6;
+
+    $this->_testProgressInfo($num_runnables, $time_per_runnable);
+  }
+
+  public function testShortRunnablesGiveAccurateProgressInfo() {
+    $num_runnables = 15;
+    $time_per_runnable = 5e4;
+
+    $this->_testProgressInfo($num_runnables, $time_per_runnable);
+  }
+
+  protected function _testProgressInfo($num_runnables, $time_per_runnable) {
+    foreach ([TRUE, FALSE] as $alarm_signal_works) {
+      $controller = $this->progressObservationControllerFactory();
+
+      $sut = $this->sutFactory(new TaskMock($num_runnables), [
+        'controller' => $controller,
+        'measured_time' => 0,
+        'alarm_signal_works' => $alarm_signal_works
+      ]);
+
+      $expected_microtime = 0;
+      $exepected_count = 0;
+
+      $controller->expects($this->exactly($num_runnables))
+        ->method('onRunnableComplete')
+        ->with( // we are testing the 3rd parameter, a ProgressInfo
+          $this->anything(),
+          $this->anything(),
+          $this->callback(function (ProgressInfo $progress) use(&$expected_microtime, &$exepected_count, $time_per_runnable, $num_runnables) {
+            // PHPUnit has obnoxious habit of running this callback more times than onRunnableComplete is invoked
+            if ($exepected_count < $num_runnables) {
+              $expected_microtime += $time_per_runnable;
+              $exepected_count += 1;
+            }
+            return (
+              $progress->timeElapsedIsEstimated === ($time_per_runnable <= 0.75e6 ? $progress->timeElapsedIsEstimated : FALSE)
+              && $progress->timeElapsed == $expected_microtime
+              && $progress->runnablesExecuted === $exepected_count
+              && $progress->estimatedRunnablesRemaining !== NULL
+            );
+          })
+        );
+
+      $this->simulateRunning($sut, $time_per_runnable, $num_runnables);
+    }
   }
 
   protected function simulateRunning(RunnerMock $sut, $increment_callback, $theoretical_max_runnables) {
