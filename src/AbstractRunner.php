@@ -367,6 +367,7 @@ abstract class AbstractRunner implements RunnerInterface {
         $this->progress_struct = $progress;
         $progress->timeElapsed = $new_measured_walltime - $this->start_walltime;
         $progress->timeElapsedIsEstimated = FALSE;
+        $progress->runnablesExecuted = $this->runnables_since_request_start;
 
         $average_runnable_time = ($new_measured_walltime - $this->last_measured_walltime) / $this->runnables_since_last_measurement;
         $new_runnable_estimate = $this->recordRuntime($average_runnable_time, $this->runnables_since_last_measurement);

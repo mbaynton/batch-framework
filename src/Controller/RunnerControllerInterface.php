@@ -3,6 +3,7 @@
 
 namespace mbaynton\BatchFramework\Controller;
 
+use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\RunnableInterface;
 
 /**
@@ -21,8 +22,8 @@ interface RunnerControllerInterface {
 
   function onBeforeRunnableStarted(RunnableInterface $runnable);
 
-  function onRunnableComplete(RunnableInterface $runnable, $result);
+  function onRunnableComplete(RunnableInterface $runnable, $result, ProgressInfo $progress);
 
-  function onRunnableError(RunnableInterface $runnable, $exception);
+  function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress);
 
 }

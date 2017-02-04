@@ -4,6 +4,7 @@
 namespace mbaynton\BatchFramework;
 
 
+use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use Psr\Http\Message\ResponseInterface;
 
 interface TaskInterface {
@@ -52,9 +53,9 @@ interface TaskInterface {
    */
   function getRunnableIterator(RunnerInterface $runner, $runner_rank, $num_total_runners, $last_processed_runnable_id);
 
-  function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator);
+  function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress);
 
-  function onRunnableError(RunnableInterface $runnable, $exception);
+  function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress);
 
   /**
    * Whether the Task is able to transform sets of Runnable results into a
