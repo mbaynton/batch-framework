@@ -5,7 +5,7 @@ services:
     environment:
       - PHP_VERSION=7.1.0
       - CONTAINER_DIR=/app
-      - CONTAINER_CMD=/app/vendor/bin/phpunit
+      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist
     volumes:
       - .:/app
       - /tmp:/host_tmp
@@ -18,7 +18,7 @@ services:
     environment:
       - PHP_VERSION=7.0.14
       - CONTAINER_DIR=/app
-      - CONTAINER_CMD=/app/vendor/bin/phpunit
+      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist
     volumes:
       - .:/app
       - /tmp:/host_tmp
@@ -31,7 +31,7 @@ services:
     environment:
       - PHP_VERSION=5.6.29
       - CONTAINER_DIR=/app
-      - CONTAINER_CMD=/app/vendor/bin/phpunit
+      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist
     volumes:
       - .:/app
       - /tmp:/host_tmp
@@ -44,7 +44,7 @@ services:
     environment:
       - PHP_VERSION=5.5.38
       - CONTAINER_DIR=/app
-      - CONTAINER_CMD=/app/vendor/bin/phpunit
+      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist
     volumes:
       - .:/app
       - /tmp:/host_tmp
@@ -57,7 +57,7 @@ services:
     environment:
       - PHP_VERSION=5.4.45
       - CONTAINER_DIR=/app
-      - CONTAINER_CMD=/app/vendor/bin/phpunit
+      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist
     volumes:
       - .:/app
       - /tmp:/host_tmp
