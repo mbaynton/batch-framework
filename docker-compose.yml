@@ -5,7 +5,7 @@ services:
     environment:
       - PHP_VERSION=7.1.0
       - CONTAINER_DIR=/app
-      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist
+      - CONTAINER_CMD=/app/vendor/bin/phpunit -c phpunit.xml.dist --coverage-clover /host_tmp/batchframework-clover.xml
     volumes:
       - .:/app
       - /tmp:/host_tmp

@@ -25,7 +25,8 @@
   },
   "require-dev": {
     "phpunit/phpunit": "~4.8",
-    "guzzlehttp/psr7": "^1.3"
+    "guzzlehttp/psr7": "^1.3",
+    "satooshi/php-coveralls": "^1.0"
   },
   "config": {
     "platform": {

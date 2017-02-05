@@ -6,3 +6,8 @@ services:
 install: composer install
 script:
   - ./docker-all_tests.sh
+
+after_success:
+  # php-coveralls expects paths in the clover xml to exist
+  - sudo ln -s $(pwd) /app
+  - travis_retry vendor/bin/coveralls -v

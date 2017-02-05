@@ -9,4 +9,11 @@
             <directory suffix="Test.php">tests/Unit/</directory>
         </testsuite>
     </testsuites>
+
+    <!-- Filter code coverage to only src/ -->
+    <filter>
+        <whitelist>
+            <directory suffix=".php">src/</directory>
+        </whitelist>
+    </filter>
 </phpunit>

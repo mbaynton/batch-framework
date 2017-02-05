@@ -1,7 +1,8 @@
-<div style="float: right">
-<img src="https://travis-ci.org/mbaynton/batch-framework.svg?branch=master" alt="Build Status">
-</div>
 <h1>Batch Processing Framework</h1>
+
+[![Build Status](https://travis-ci.org/mbaynton/batch-framework.svg?branch=master)](https://travis-ci.org/mbaynton/batch-framework)
+[![Coverage Status](https://coveralls.io/repos/github/mbaynton/batch-framework/badge.svg?branch=master)](https://coveralls.io/github/mbaynton/batch-framework?branch=master)
+
 This library offers foundational algorithms and structures to handle scenarios
 where long-running jobs can be divided into small work units. It emphasizes
 minimal overhead of the framework itself so that jobs complete as quickly as
@@ -35,7 +36,8 @@ APIs are subject to change until version 1.0.0.
 
 ## Requirements
  * PHP 5.4+
- * `Psr\Http\Message\ResponseInterface`, available via Composer.
+ * `Psr\Http\Message\ResponseInterface` available via Composer, and any 
+   implementation of this interface.
 
 ## License
 MIT
