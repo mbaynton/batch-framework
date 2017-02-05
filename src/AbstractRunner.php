@@ -132,8 +132,6 @@ abstract class AbstractRunner implements RunnerInterface {
    *
    * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
    *   The controller.
-   * @param FunctionWrappers $time_source
-   *   Instance of the FunctionWrappers class.
    * @param int $target_completion_seconds
    *   Target number of elapsed seconds between dispatching of the first Runnable
    *   and completion of the last Runnable that will be processed during this
@@ -141,18 +139,21 @@ abstract class AbstractRunner implements RunnerInterface {
    * @param bool $alarm_signal_works
    *   Whether pcntl_alarm/pcntl_signal/pcntl_signal_dispatch are available
    *   and functioning on this platform.
+   * @param FunctionWrappers|null $function_wrappers
+   *   Internal parameter used for unit testing. Leave NULL.
+   *   Instance of a FunctionWrappers, or NULL.
    */
   public function __construct(
     RunnerControllerInterface $controller,
-    FunctionWrappers $time_source,
     $target_completion_seconds = 30,
-    $alarm_signal_works = FALSE
+    $alarm_signal_works = FALSE,
+    FunctionWrappers $function_wrappers = NULL
   ) {
     $this->controller = $controller;
     $this->alarm_signal_works = $alarm_signal_works;
     $this->alarm_signal_received = FALSE;
     $this->target_completion_seconds = $target_completion_seconds;
-    $this->time_source = $time_source;
+    $this->time_source = FunctionWrappers::get($function_wrappers);
     $this->last_measured_walltime = $this->time_source->microtime(TRUE);
     $this->start_walltime = $this->last_measured_walltime;
     $this->runnables_since_last_measurement = 0;

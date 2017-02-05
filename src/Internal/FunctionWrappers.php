@@ -48,4 +48,21 @@ class FunctionWrappers {
     }
     return self::$singleton_instance;
   }
+
+  /**
+   * Convenience method to get some FunctionWrappers implementation.
+   * The default one is used unless an alternative is provided.
+   *
+   * @param \mbaynton\BatchFramework\Internal\FunctionWrappers|NULL $wrappers
+   *   An alternative to the default FunctionWrappers, or NULL.
+   *
+   * @return \mbaynton\BatchFramework\Internal\FunctionWrappers
+   */
+  public static function get(FunctionWrappers $wrappers = NULL) {
+    if ($wrappers !== NULL) {
+      return $wrappers;
+    } else {
+      return self::singleton();
+    }
+  }
 }

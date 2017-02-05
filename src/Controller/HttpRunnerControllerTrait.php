@@ -63,9 +63,8 @@ trait HttpRunnerControllerTrait {
    *   The Runner that will be used in servicing of this request.
    */
   protected function onCreate($abort_behavior = NULL, RunnerInterface $runner) {
-    if ($this->_fnwrap === NULL) {
-      $this->_fnwrap = FunctionWrappers::singleton();
-    }
+    // Make sure we have non-null FunctionWrappers.
+    $this->_fnwrap = FunctionWrappers::get($this->_fnwrap);
 
     // Since we manage a target time to completion ourselves, we don't want the
     // default time limitations fouling it up as long as we stay within reason.

@@ -51,7 +51,7 @@ class RunnerMock extends AbstractRunner {
       self::$cache_by_id[$this->runner_id] = [];
     }
 
-    parent::__construct($controller, $time_source, $target_completion_seconds, $alarm_signal_works);
+    parent::__construct($controller, $target_completion_seconds, $alarm_signal_works, $time_source);
 
     if ($this->time_source instanceof \PHPUnit_Framework_MockObject_MockObject) {
       $this->last_alarm = $this->time_source->peekMicrotime();
