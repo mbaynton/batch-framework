@@ -20,14 +20,14 @@ use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
  *   AbstractRunnerProgressionTest.
  */
 class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
-  const TIMESOURCECLASS = '\mbaynton\BatchFramework\Internal\TimeSource';
+  const TIMESOURCECLASS = '\mbaynton\BatchFramework\Internal\FunctionWrappers';
 
   public static $monotonic_runner_id = 0;
   public static $monotonic_task_id = 0;
 
   /**
    * @var \PHPUnit_Framework_MockObject_MockObject $ts
-   *   The last TimeSource mock associated to the last sutFactory() call.
+   *   The last FunctionWrappers mock associated to the last sutFactory() call.
    */
   protected $ts;
 
@@ -135,6 +135,18 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
 
   public function testAbstractRunnerInstantiates() {
     $this->sutFactory(1);
+  }
+
+  public function testGetIncarnationTargetRuntime() {
+    $task = new TaskMock(10, 0);
+    $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
+    $sut = $this->sutFactory(20, 1, $schedule, ['target_completion_seconds' => 42]);
+
+    $this->assertEquals(
+      42,
+      $sut->getIncarnationTargetRuntime(),
+      'getIncarnationTargetRuntime() did not yield the answer to the universe and everything.'
+    );
   }
 
   public function testAbstractRunnerCompletesTask_OneIncarnation() {

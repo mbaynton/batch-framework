@@ -4,7 +4,10 @@ namespace mbaynton\BatchFramework\Tests\Unit\Controller;
 
 use mbaynton\BatchFramework\Controller\HttpRunnerControllerTrait;
 use mbaynton\BatchFramework\Controller\RunnerControllerInterface;
-use mbaynton\BatchFramework\Internal\TimeSource;
+use mbaynton\BatchFramework\Datatype\ProgressInfo;
+use mbaynton\BatchFramework\Internal\FunctionWrappers;
+use mbaynton\BatchFramework\RunnableInterface;
+use mbaynton\BatchFramework\RunnerInterface;
 
 /**
  * Class HttpRunnerController
@@ -13,7 +16,16 @@ use mbaynton\BatchFramework\Internal\TimeSource;
 class HttpRunnerController implements RunnerControllerInterface  {
   use HttpRunnerControllerTrait;
 
-  public function __construct(TimeSource $time_source, $alarm_signal_works, $target_completion_seconds = 30) {
-    $this->onCreate($time_source, $alarm_signal_works, $target_completion_seconds);
+  public function __construct($abort_behavior, FunctionWrappers $wrappers, RunnerInterface $runner) {
+    $this->_fnwrap = $wrappers;
+    $this->onCreate($abort_behavior, $runner);
   }
+
+  // AbstractRunner's proper use of RunnerControllerInterface tested elsewhere.
+  public function onRunnableComplete(RunnableInterface $runnable, $result, ProgressInfo $progress) {}
+
+  public function onBeforeRunnableStarted(RunnableInterface $runnable) {}
+
+  public function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress) {}
+
 }

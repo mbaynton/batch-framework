@@ -33,7 +33,7 @@ class RunnerMock extends AbstractRunner {
   /**
    * RunnerMock constructor.
    * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
-   * @param \mbaynton\BatchFramework\Internal\TimeSource $time_source
+   * @param \mbaynton\BatchFramework\Internal\FunctionWrappers $time_source
    * @param int $runner_id
    * @param bool $target_completion_seconds
    * @param $alarm_signal_works

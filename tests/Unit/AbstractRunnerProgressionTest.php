@@ -4,7 +4,7 @@ namespace mbaynton\BatchFramework\Tests\Unit;
 
 
 use mbaynton\BatchFramework\Datatype\ProgressInfo;
-use mbaynton\BatchFramework\Internal\TimeSource;
+use mbaynton\BatchFramework\Internal\FunctionWrappers;
 use mbaynton\BatchFramework\ScheduledTask;
 use mbaynton\BatchFramework\TaskInterface;
 use mbaynton\BatchFramework\Tests\Mocks\RunnableMock;
@@ -14,11 +14,11 @@ use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
 
 class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
-  const TIMESOURCECLASS = '\mbaynton\BatchFramework\Internal\TimeSource';
+  const TIMESOURCECLASS = '\mbaynton\BatchFramework\Internal\FunctionWrappers';
 
   /**
    * @var \PHPUnit_Framework_MockObject_MockObject $ts
-   *   The last TimeSource mock associated to the last sutFactory() call.
+   *   The last FunctionWrappers mock associated to the last sutFactory() call.
    */
   protected $ts;
 
