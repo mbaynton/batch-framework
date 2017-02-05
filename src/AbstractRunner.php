@@ -5,7 +5,7 @@ namespace mbaynton\BatchFramework;
 
 use mbaynton\BatchFramework\Controller\RunnerControllerInterface;
 use mbaynton\BatchFramework\Datatype\ProgressInfo;
-use mbaynton\BatchFramework\Internal\TimeSource;
+use mbaynton\BatchFramework\Internal\FunctionWrappers;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -38,7 +38,7 @@ abstract class AbstractRunner implements RunnerInterface {
   protected $scheduled_task;
 
   /**
-   * @var TimeSource $time_source
+   * @var FunctionWrappers $time_source
    */
   protected $time_source;
 
@@ -132,8 +132,8 @@ abstract class AbstractRunner implements RunnerInterface {
    *
    * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
    *   The controller.
-   * @param TimeSource $time_source
-   *   Instance of the TimeSource class.
+   * @param FunctionWrappers $time_source
+   *   Instance of the FunctionWrappers class.
    * @param int $target_completion_seconds
    *   Target number of elapsed seconds between dispatching of the first Runnable
    *   and completion of the last Runnable that will be processed during this
@@ -144,7 +144,7 @@ abstract class AbstractRunner implements RunnerInterface {
    */
   public function __construct(
     RunnerControllerInterface $controller,
-    TimeSource $time_source,
+    FunctionWrappers $time_source,
     $target_completion_seconds = 30,
     $alarm_signal_works = FALSE
   ) {
@@ -251,6 +251,13 @@ abstract class AbstractRunner implements RunnerInterface {
    * @return void
    */
   protected abstract function finalizeTask(RunnableResultAggregatorInterface $aggregator, $runner_id);
+
+  /**
+   * @inheritdoc
+   */
+  public function getIncarnationTargetRuntime() {
+    return $this->target_completion_seconds;
+  }
 
   /**
    * @return ResponseInterface|null
