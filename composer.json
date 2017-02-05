@@ -1,5 +1,6 @@
 {
-  "name": "mbaynton/batch-processor",
+  "name": "mbaynton/batch-framework",
+  "type": "library",
   "description": "An API and foundational algorithms for efficient processing of long-running jobs that can be divided into small work units.",
   "minimum-stability": "stable",
   "license": "MIT",
