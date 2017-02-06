@@ -24,7 +24,10 @@ interface RunnerInterface {
   /**
    * Runs all the Runnables that this runner will process.
    *
+   * @param ScheduledTaskInterface $scheduled_task
+   *   The scheduled task to be run.
+   *
    * @return void
    */
-  function run();
+  function run(ScheduledTaskInterface $scheduled_task);
 }

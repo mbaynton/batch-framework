@@ -101,11 +101,9 @@ class RunnerMock extends AbstractRunner {
     return parent::runnableDone();
   }
 
-  public function attachScheduledTask(ScheduledTaskInterface $scheduledTask) {
-    $this->task = $scheduledTask->getTask();
-    $this->scheduled_task = $scheduledTask;
-    if (! array_key_exists($this->scheduled_task->getTaskId(), self::$task_result_cache_by_task_id)) {
-      self::$task_result_cache_by_task_id[$this->scheduled_task->getTaskId()] = [];
+  public function attachScheduledTask(ScheduledTaskInterface $scheduled_task) {
+    if (! array_key_exists($scheduled_task->getTaskId(), self::$task_result_cache_by_task_id)) {
+      self::$task_result_cache_by_task_id[$scheduled_task->getTaskId()] = [];
     }
   }
 

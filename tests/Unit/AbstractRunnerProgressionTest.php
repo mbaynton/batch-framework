@@ -23,6 +23,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
   protected $ts;
 
   /**
+   * @var ScheduledTask $current_schedule
+   *   The scheduled task produced by the last call to sutFactory().
+   */
+  protected $current_schedule;
+
+  /**
    * @param array $opts
    *  'measured_time': Number of microseconds to report walltime has changed on
    *                   each call to microtime().
@@ -99,6 +105,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
     if ($task !== NULL) {
       $scheduledTask = new ScheduledTask($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-');
+      $this->current_schedule = $scheduledTask;
       $sut->attachScheduledTask($scheduledTask);
     }
 
@@ -112,7 +119,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
       'measured_time' => -10e3,
       ]);
 
-    $sut->run();
+    $sut->run($this->current_schedule);
 
     $this->assertEquals(
       5,
@@ -135,7 +142,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->never())->method('pcntl_alarm');
     $this->ts->expects($this->never())->method('pcntl_signal_dispatch');
 
-    $sut->run();
+    $sut->run($this->current_schedule);
   }
 
   public function testShortRunnablesEngageTimeAveraging() {
@@ -147,7 +154,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->atLeastOnce())->method('pcntl_alarm');
     $this->ts->expects($this->atLeast(5))->method('pcntl_signal_dispatch');
 
-    $sut->run();
+    $sut->run($this->current_schedule);
   }
 
   /**
@@ -225,7 +232,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
       $sut->setIncrementCallback($increment_callback);
     }
 
-    $sut->run();
+    $sut->run($this->current_schedule);
 
     $this->assertLessThanOrEqual(
       $theoretical_max_runnables,

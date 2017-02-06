@@ -266,7 +266,10 @@ abstract class AbstractRunner implements RunnerInterface {
    *   on completion of the entire batch. Otherwise, if the entire batch was not
    *   completed by this incarnation of this Runner, returns NULL.
    */
-  public function run() {
+  public function run(ScheduledTaskInterface $scheduled_task) {
+    $this->scheduled_task = $scheduled_task;
+    $this->task = $scheduled_task->getTask();
+
     $state = $this->retrieveRunnerState();
 
     // RunnableResultAggregator not complex enough for DI at present.

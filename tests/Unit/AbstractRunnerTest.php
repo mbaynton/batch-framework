@@ -153,7 +153,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     $task = new TaskMock(10, 0);
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
     $sut = $this->sutFactory(20, 1, $schedule);
-    $result = $sut->run();
+    $result = $sut->run($schedule);
     $this->assertEquals(
       10,
       $result->getBody()->getContents()
@@ -165,7 +165,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
-    while (($result = $sut->run()) === NULL) {
+    while (($result = $sut->run($schedule)) === NULL) {
       $num_incarnations++;
       $sut = $this->sutFactory(10, 1, $schedule);
     }
@@ -187,7 +187,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
-    while (($result = $sut->run()) === NULL) {
+    while (($result = $sut->run($schedule)) === NULL) {
       $num_incarnations++;
       $sut = $this->sutFactory(10, 1, $schedule);
     }
@@ -260,14 +260,16 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
       $runner_id_incarnations[$id] = 0;
     }
     $result = NULL;
+    $incomplete_runner_ids = $runner_ids;
     while ($result === NULL) {
-      $incomplete_runner_ids = reset($runners)->getIncompleteRunnerIds();
       foreach ($incomplete_runner_ids as $runner_id) {
-        $result = $runners[$runner_id]->run();
+        $runner = $runners[$runner_id];
+        $result = $runner->run($schedule);
         $runner_id_incarnations[$runner_id]++;
         // Make a new Runner with this ID to simulate a new request
         $runners[$runner_id] = $this->sutFactory(5, $runner_id, $schedule);
       }
+      $incomplete_runner_ids = $runner->getIncompleteRunnerIds();
     }
 
     $this->assertEquals(
@@ -303,7 +305,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
 
     $runner = $this->sutFactory(-1, 1, $scheduled_task, ['controller' => $controller]);
 
-    $runner->run();
+    $runner->run($scheduled_task);
 
     if ($runner_succeeds) {
       $this->assertEquals(
