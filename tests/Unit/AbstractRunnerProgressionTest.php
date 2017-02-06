@@ -167,7 +167,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
         'shouldContinueRunning',
         'onBeforeRunnableStarted',
         'onRunnableComplete',
-        'onRunnableError'
+        'onRunnableError',
+        'onTaskComplete'
       ])
       ->getMock();
 

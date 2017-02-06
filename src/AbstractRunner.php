@@ -357,6 +357,7 @@ abstract class AbstractRunner implements RunnerInterface {
         }
       }
       $response = $this->task->assembleResultResponse($results);
+      $this->controller->onTaskComplete($this->scheduled_task);
       $this->finalizeTask($aggregator, $this->getRunnerId());
       return $response;
     } else {

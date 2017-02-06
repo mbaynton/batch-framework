@@ -183,4 +183,11 @@ class RunnerMock extends AbstractRunner {
       $runner_cache["done"] = TRUE;
     }
   }
+
+  /**
+   * @return \mbaynton\BatchFramework\Controller\RunnerControllerInterface
+   */
+  public function getController() {
+    return $this->controller;
+  }
 }

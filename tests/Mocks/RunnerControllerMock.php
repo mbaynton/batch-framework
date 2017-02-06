@@ -7,6 +7,7 @@ namespace mbaynton\BatchFramework\Tests\Mocks;
 use mbaynton\BatchFramework\Controller\RunnerControllerInterface;
 use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\RunnableInterface;
+use mbaynton\BatchFramework\ScheduledTaskInterface;
 
 class RunnerControllerMock implements RunnerControllerInterface {
   protected $num_runnables_left;
@@ -27,6 +28,8 @@ class RunnerControllerMock implements RunnerControllerInterface {
    */
   protected $num_on_error;
 
+  protected $num_task_complete = 0;
+
   public function onRunnableComplete(RunnableInterface $runnable, $result, ProgressInfo $progress) {
     $this->num_runnables_left--;
     $this->num_on_complete++;
@@ -39,6 +42,10 @@ class RunnerControllerMock implements RunnerControllerInterface {
 
   public function onBeforeRunnableStarted(RunnableInterface $runnable) {
     $this->num_on_before_started++;
+  }
+
+  public function onTaskComplete(ScheduledTaskInterface $task) {
+    $this->num_task_complete++;
   }
 
   /*
@@ -60,5 +67,9 @@ class RunnerControllerMock implements RunnerControllerInterface {
 
   public function getNumCalls_onRunnableError() {
     return $this->num_on_error;
+  }
+
+  public function getNumCalls_onTaskComplete() {
+    return $this->num_task_complete;
   }
 }

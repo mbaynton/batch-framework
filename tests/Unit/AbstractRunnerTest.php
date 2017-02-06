@@ -152,11 +152,16 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   public function testAbstractRunnerCompletesTask_OneIncarnation() {
     $task = new TaskMock(10, 0);
     $schedule = new ScheduledTask($task, $this->assignTaskId(), [1], '-');
-    $sut = $this->sutFactory(20, 1, $schedule);
+    $controller = new RunnerControllerMock();
+    $sut = $this->sutFactory(20, 1, $schedule, ['controller' => $controller]);
     $result = $sut->run($schedule);
     $this->assertEquals(
       10,
       $result->getBody()->getContents()
+    );
+    $this->assertEquals(
+      1,
+      $controller->getNumCalls_onTaskComplete()
     );
   }
 
@@ -261,11 +266,13 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     }
     $result = NULL;
     $incomplete_runner_ids = $runner_ids;
+    $controller_informed_task_complete = 0;
     while ($result === NULL) {
       foreach ($incomplete_runner_ids as $runner_id) {
         $runner = $runners[$runner_id];
         $result = $runner->run($schedule);
         $runner_id_incarnations[$runner_id]++;
+        $controller_informed_task_complete += $runner->getController()->getNumCalls_onTaskComplete();
         // Make a new Runner with this ID to simulate a new request
         $runners[$runner_id] = $this->sutFactory(5, $runner_id, $schedule);
       }
@@ -279,6 +286,10 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     $this->assertEquals(
       array_combine($runner_ids, [3, 3, 3]),
       $runner_id_incarnations
+    );
+    $this->assertEquals(
+      1,
+      $controller_informed_task_complete
     );
   }
 
