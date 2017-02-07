@@ -48,6 +48,10 @@ class TaskMock implements TaskInterface {
     }
   }
 
+  public function getMinRunners() {
+    return 1;
+  }
+
   public function getMaxRunners() {
     return 0;
   }

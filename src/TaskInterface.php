@@ -20,7 +20,20 @@ interface TaskInterface {
   function getNumRunnables();
 
   /**
-   * Sets a limit on number of Runnables that may be executing concurrently.
+   * Sets a lower limit on the number of Runners that will run this Task.
+   *
+   * This is not a guarantee of a particular level of concurrency, only that
+   * this many logical Runner IDs will be assigned to the Task.
+   *
+   * Setting such bounds can simplify implementing getRunnableIterator()
+   * and/or the Iterator it returns.
+   *
+   * @return int
+   */
+  function getMinRunners();
+
+  /**
+   * Sets an upper limit on the number of Runners that will run this Task.
    *
    * @return int
    *   The maximum number of Runnables that may be dispatched concurrently.

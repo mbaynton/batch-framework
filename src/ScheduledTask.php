@@ -41,12 +41,7 @@ class ScheduledTask implements ScheduledTaskInterface {
   }
 
   public function getNumRunners() {
-    // Override this method if you need to adjust.
-    if ($this->runner_ids === NULL) {
-      return 4;
-    } else {
-      return count($this->runner_ids);
-    }
+    return count($this->runner_ids);
   }
 
   public function getRunnerIds() {
