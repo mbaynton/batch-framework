@@ -130,8 +130,6 @@ abstract class AbstractRunner implements RunnerInterface {
   /**
    * AbstractRunner constructor.
    *
-   * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
-   *   The controller.
    * @param int $target_completion_seconds
    *   Target number of elapsed seconds between dispatching of the first Runnable
    *   and completion of the last Runnable that will be processed during this
@@ -142,12 +140,15 @@ abstract class AbstractRunner implements RunnerInterface {
    * @param FunctionWrappers|null $function_wrappers
    *   Internal parameter used for unit testing. Leave NULL.
    *   Instance of a FunctionWrappers, or NULL.
+   * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
+   *   The controller. If not provided at construction time, you must call
+   *   setController() before calling run().
    */
   public function __construct(
-    RunnerControllerInterface $controller,
     $target_completion_seconds = 30,
     $alarm_signal_works = FALSE,
-    FunctionWrappers $function_wrappers = NULL
+    FunctionWrappers $function_wrappers = NULL,
+    RunnerControllerInterface $controller = NULL
   ) {
     $this->controller = $controller;
     $this->alarm_signal_works = $alarm_signal_works;
@@ -164,6 +165,17 @@ abstract class AbstractRunner implements RunnerInterface {
         $this->alarm_signal_received = TRUE;
       });
     }
+  }
+
+  /**
+   * Setter injection of the controller, if it is not convenient to provide it
+   * at construction time.
+   *
+   * @param \mbaynton\BatchFramework\Controller\RunnerControllerInterface $controller
+   *   The controller.
+   */
+  public function setController(RunnerControllerInterface $controller) {
+    $this->controller = $controller;
   }
 
   /**
