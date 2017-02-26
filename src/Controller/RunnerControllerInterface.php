@@ -5,7 +5,7 @@ namespace mbaynton\BatchFramework\Controller;
 
 use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\RunnableInterface;
-use mbaynton\BatchFramework\ScheduledTaskInterface;
+use mbaynton\BatchFramework\TaskInstanceStateInterface;
 
 /**
  * Interface RunnerControllerInterface
@@ -64,11 +64,11 @@ interface RunnerControllerInterface {
    *
    * Provides an opportunity to do session state cleanup, etc.
    *
-   * @param ScheduledTaskInterface $task
+   * @param TaskInstanceStateInterface $task
    *   The scheduled task that has completed.
    *
    * @return void
    */
-  function onTaskComplete(ScheduledTaskInterface $task);
+  function onTaskComplete(TaskInstanceStateInterface $task);
 
 }

@@ -5,7 +5,7 @@ namespace mbaynton\BatchFramework\Tests\Unit;
 
 use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\Internal\FunctionWrappers;
-use mbaynton\BatchFramework\ScheduledTask;
+use mbaynton\BatchFramework\TaskInstanceState;
 use mbaynton\BatchFramework\TaskInterface;
 use mbaynton\BatchFramework\Tests\Mocks\RunnableMock;
 use mbaynton\BatchFramework\Tests\Mocks\RunnerControllerMock;
@@ -23,7 +23,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
   protected $ts;
 
   /**
-   * @var ScheduledTask $current_schedule
+   * @var TaskInstanceState $current_schedule
    *   The scheduled task produced by the last call to sutFactory().
    */
   protected $current_schedule;
@@ -104,7 +104,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $sut = new RunnerMock($controller, $ts, AbstractRunnerTest::$monotonic_runner_id++, $target_seconds, $use_signaling);
 
     if ($task !== NULL) {
-      $scheduledTask = new ScheduledTask($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-');
+      $scheduledTask = new TaskInstanceState($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-');
       $this->current_schedule = $scheduledTask;
       $sut->attachScheduledTask($scheduledTask);
     }
@@ -113,13 +113,14 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAdjustedSystemClock() {
+    $task = new TaskMock(8);
     $sut = $this->sutFactory(
-      new TaskMock(8),
+      $task,
       [
       'measured_time' => -10e3,
       ]);
 
-    $sut->run($this->current_schedule);
+    $sut->run($task, $this->current_schedule);
 
     $this->assertEquals(
       5,
@@ -134,7 +135,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testLongRunnablesDisableTimeAveraging() {
-    $sut = $this->sutFactory(new TaskMock(10), [
+    $task = new TaskMock(10);
+    $sut = $this->sutFactory($task, [
       'measured_time' => 1e6,
       'alarm_signal_works' => TRUE,
     ]);
@@ -142,11 +144,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->never())->method('pcntl_alarm');
     $this->ts->expects($this->never())->method('pcntl_signal_dispatch');
 
-    $sut->run($this->current_schedule);
+    $sut->run($task, $this->current_schedule);
   }
 
   public function testShortRunnablesEngageTimeAveraging() {
-    $sut = $this->sutFactory(new TaskMock(10), [
+    $task = new TaskMock(10);
+    $sut = $this->sutFactory($task, [
       'measured_time' => 1000,
       'alarm_signal_works' => TRUE
     ]);
@@ -154,7 +157,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $this->ts->expects($this->atLeastOnce())->method('pcntl_alarm');
     $this->ts->expects($this->atLeast(5))->method('pcntl_signal_dispatch');
 
-    $sut->run($this->current_schedule);
+    $sut->run($task, $this->current_schedule);
   }
 
   /**
@@ -195,7 +198,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
       $controller = $this->progressObservationControllerFactory();
 
-      $sut = $this->sutFactory(new TaskMock($num_runnables), [
+      $task = new TaskMock($num_runnables);
+      $sut = $this->sutFactory($task, [
         'controller' => $controller,
         'measured_time' => 0,
         'alarm_signal_works' => $alarm_signal_works
@@ -224,16 +228,16 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
           })
         );
 
-      $this->simulateRunning($sut, $time_per_runnable, $num_runnables);
+      $this->simulateRunning($sut, $task, $time_per_runnable, $num_runnables);
     }
   }
 
-  protected function simulateRunning(RunnerMock $sut, $increment_callback, $theoretical_max_runnables) {
+  protected function simulateRunning(RunnerMock $sut, TaskInterface $task, $increment_callback, $theoretical_max_runnables) {
     if ($increment_callback) {
       $sut->setIncrementCallback($increment_callback);
     }
 
-    $sut->run($this->current_schedule);
+    $sut->run($task, $this->current_schedule);
 
     $this->assertLessThanOrEqual(
       $theoretical_max_runnables,
@@ -248,7 +252,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 7;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory(new TaskMock(50), [
+      $task = new TaskMock(50);
+      $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -260,7 +265,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
         ? (($target_seconds + 1.2) * 1e6) + $this->ts->peekMicrotime()
         : (($target_seconds + 7) * 1e6) + $this->ts->peekMicrotime();
 
-      $count = $this->simulateRunning($sut,
+      $count = $this->simulateRunning($sut, $task,
         function ($n) {
           if ($n < 8) {
             return 5e4; // 20 runnables / sec
@@ -289,7 +294,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 20;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory(new TaskMock(251), [
+      $task = new TaskMock(251);
+      $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -297,7 +303,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
       $theoretical_target_walltime = (($target_seconds + 1.2) * 1e6) + $this->ts->peekMicrotime();
 
-      $count = $this->simulateRunning($sut,
+      $count = $this->simulateRunning($sut, $task,
         function ($count) {
           if ($count <= 8) {
             return 1e6; // 1 runnable / sec
@@ -332,7 +338,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max_microtime_calls = ($target_seconds / 0.7) + $startup_constant;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory(new TaskMock($theoretical_max + 1), [
+      $task = new TaskMock($theoretical_max + 1);
+      $sut = $this->sutFactory($task, [
         'measured_time' => 0,
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => 10,
@@ -344,6 +351,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
       $count = $this->simulateRunning(
         $sut,
+        $task,
         $runnable_duration_usecs,
         $theoretical_max
       );
@@ -369,7 +377,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max = ($target_seconds * 10e5) / $runnable_duration_usecs;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory(new TaskMock($theoretical_max + 1), [
+      $task = new TaskMock($theoretical_max + 1);
+      $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -379,6 +388,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
       $count = $this->simulateRunning(
         $sut,
+        $task,
         $runnable_duration_usecs,
         $theoretical_max
       );
@@ -404,7 +414,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max = ($target_seconds * 1e6) / $runnable_duration_usecs;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory(new TaskMock($theoretical_max + 1), [
+      $task = new TaskMock($theoretical_max + 1);
+      $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
@@ -413,7 +424,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
       $max_walltime = $this->ts->peekMicrotime() + (($target_seconds + 3) * 1e6);
       $min_walltime = $this->ts->peekMicrotime() + (($target_seconds - 7) * 1e6);
 
-      $this->simulateRunning($sut,
+      $this->simulateRunning($sut, $task,
         function($count) { return (2 + $count % 6) * 1e6; },
         $theoretical_max
       );
@@ -435,9 +446,10 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 8;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $sut = $this->sutFactory(new TaskMock(10, function() {
+      $task = new TaskMock(10, function() {
         throw new \Exception ('Simulated failure in runnable');
-        }),
+      });
+      $sut = $this->sutFactory($task,
         [
         'measured_time' => 1e6,
         'alarm_signal_works' => $alarm_signal_works,
@@ -448,6 +460,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
       $count = $this->simulateRunning(
         $sut,
+        $task,
         0,
         8
       );

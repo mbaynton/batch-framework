@@ -7,7 +7,7 @@ namespace mbaynton\BatchFramework;
 interface TaskSchedulerInterface {
   /**
    * @param \mbaynton\BatchFramework\TaskInterface $task
-   * @return ScheduledTaskInterface
+   * @return TaskInstanceStateInterface
    */
   public function scheduleTask(TaskInterface $task);
 }

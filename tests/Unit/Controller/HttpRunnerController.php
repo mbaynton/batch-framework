@@ -8,7 +8,7 @@ use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\Internal\FunctionWrappers;
 use mbaynton\BatchFramework\RunnableInterface;
 use mbaynton\BatchFramework\RunnerInterface;
-use mbaynton\BatchFramework\ScheduledTaskInterface;
+use mbaynton\BatchFramework\TaskInstanceStateInterface;
 
 /**
  * Class HttpRunnerController
@@ -29,6 +29,6 @@ class HttpRunnerController implements RunnerControllerInterface  {
 
   public function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress) {}
 
-  public function onTaskComplete(ScheduledTaskInterface $task) {}
+  public function onTaskComplete(TaskInstanceStateInterface $task) {}
 
 }

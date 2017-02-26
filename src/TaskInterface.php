@@ -8,16 +8,6 @@ use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use Psr\Http\Message\ResponseInterface;
 
 interface TaskInterface {
-  /**
-   * Finds the total number of Runnables that comprise this Task.
-   *
-   * @return int
-   *   A representation of the total number of Runnables that comprise this
-   *   Task. An estimate is satisfactory and preferable if a precise figure
-   *   cannot be calculated in constant time; it is used only for concerns such
-   *   as computation of estimated percent / time remaining.
-   */
-  function getNumRunnables();
 
   /**
    * Sets a lower limit on the number of Runners that will run this Task.
@@ -30,7 +20,7 @@ interface TaskInterface {
    *
    * @return int
    */
-  function getMinRunners();
+  function getMinRunners(TaskInstanceStateInterface $schedule);
 
   /**
    * Sets an upper limit on the number of Runners that will run this Task.
@@ -41,18 +31,17 @@ interface TaskInterface {
    *   Return 1 to disable parallelization.
    *
    *   Values <= 0 cause the amount of concurrency to be limited only by
-   *   ScheduledTaskInterface.
+   *   TaskStateInterface.
    */
-  function getMaxRunners();
+  function getMaxRunners(TaskInstanceStateInterface $schedule);
 
   /**
    * Instantiates the next Runnable that should be processed by the Runner.
    *
+   * @param TaskInstanceStateInterface $schedule
    * @param RunnerInterface $runner
    * @paran int $runner_rank
    *   A number between 0 and $num_total_runners - 1.
-   * @param int $num_total_runners
-   *   The total number of Runners executing this task's Runnables.
    * @param int $last_processed_runnable_id
    *   On the first incarnation of each Runner bearing a unique
    *   $runner->getRunnerId(), this value will be 0. The iterator should start
@@ -64,11 +53,11 @@ interface TaskInterface {
    *   Runner.
    * @return AbstractRunnableIterator
    */
-  function getRunnableIterator(RunnerInterface $runner, $runner_rank, $num_total_runners, $last_processed_runnable_id);
+  function getRunnableIterator(TaskInstanceStateInterface $schedule, RunnerInterface $runner, $runner_rank, $last_processed_runnable_id);
 
-  function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress);
+  function onRunnableComplete(TaskInstanceStateInterface $schedule, RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress);
 
-  function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress);
+  function onRunnableError(TaskInstanceStateInterface $schedule, RunnableInterface $runnable, $exception, ProgressInfo $progress);
 
   /**
    * Whether the Task is able to transform sets of Runnable results into a
@@ -87,7 +76,7 @@ interface TaskInterface {
    * Task implementations do not need to provide a real implementation of this
    * method, but it can improve performance if collections of Runnable results
    * lend themselves to being simplified. If you do not wish to perform this
-   * step, simply return NULL.
+   * step, use an empty implementation and return false in supportsReduction().
    *
    * Unlike updatePartialResult(), the type of the return value need not be the
    * same as the types of the input data stored in the $aggregator, and need not
@@ -95,9 +84,9 @@ interface TaskInterface {
    *
    * @param \mbaynton\BatchFramework\RunnableResultAggregatorInterface $aggregator
    *   An aggregator instance that has collected one or more result.
-   * @return mixed|NULL
-   *   If non-null, the returned value is persisted for recall at Task end.
-   *   If null, all collected Runnable results are persisted instead.
+   * @return mixed
+   *   The returned value is passed on to updatePartialResult() for further
+   *   simplification if supported, and then persisted for recall at Task end.
    */
   function reduce(RunnableResultAggregatorInterface $aggregator);
 

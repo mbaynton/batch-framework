@@ -33,9 +33,9 @@ abstract class AbstractRunner implements RunnerInterface {
   protected $task;
 
   /**
-   * @var ScheduledTaskInterface $scheduled_task
+   * @var TaskInstanceStateInterface $instance_state
    */
-  protected $scheduled_task;
+  protected $instance_state;
 
   /**
    * @var FunctionWrappers $time_source
@@ -230,8 +230,9 @@ abstract class AbstractRunner implements RunnerInterface {
   /**
    * A method that is executed after all the Runnables for this incarnation of
    * the Runner have executed. The implementation is responsible for persisting
-   * new result data, what the $last_processed_runnable was, and whether the
-   * Runner is complete.
+   * new result data, what the $last_processed_runnable was, whether the
+   * Runner is complete, and if the TaskInstanceState has updates, applying
+   * them to the latest TaskInstanceState data.
    *
    * @param mixed $new_result_data
    *   The result of all Runnables executed in this incarnation of this Runner,
@@ -248,11 +249,12 @@ abstract class AbstractRunner implements RunnerInterface {
    *   The last Runnable executed by the run() method. If a non-null value is
    *   provided, persist the return value of its getId() method and retrieve it
    *   in your implementation's getLastCompletedRunnableId().
+   * @param \mbaynton\BatchFramework\TaskInstanceStateInterface $instance_state
    * @param int $runner_id
    * @param \mbaynton\BatchFramework\RunnableResultAggregatorInterface $aggregator
    * @return void
    */
-  protected abstract function finalizeRunner($new_result_data, RunnableInterface $last_processed_runnable = NULL, $runner_id, RunnableResultAggregatorInterface $aggregator = NULL);
+  protected abstract function finalizeRunner($new_result_data, RunnableInterface $last_processed_runnable = NULL, TaskInstanceStateInterface $instance_state, $runner_id, RunnableResultAggregatorInterface $aggregator = NULL);
 
   /**
    * A method that is executed after all the Runnables for the lifespan of this
@@ -278,9 +280,9 @@ abstract class AbstractRunner implements RunnerInterface {
    *   on completion of the entire batch. Otherwise, if the entire batch was not
    *   completed by this incarnation of this Runner, returns NULL.
    */
-  public function run(ScheduledTaskInterface $scheduled_task) {
-    $this->scheduled_task = $scheduled_task;
-    $this->task = $scheduled_task->getTask();
+  public function run(TaskInterface $task, TaskInstanceStateInterface $instance_state) {
+    $this->instance_state = $instance_state;
+    $this->task = $task;
 
     $state = $this->retrieveRunnerState();
 
@@ -289,9 +291,9 @@ abstract class AbstractRunner implements RunnerInterface {
     $next_runnable = NULL;
 
     $runnable_iterator = $this->task->getRunnableIterator(
+      $this->instance_state,
       $this,
-      array_search($this->getRunnerId(), $this->scheduled_task->getRunnerIds()),
-      $this->scheduled_task->getNumRunners(),
+      array_search($this->getRunnerId(), $this->instance_state->getRunnerIds()),
       (empty($state['last_completed_runnable_id']) ? 0 : $state['last_completed_runnable_id'])
     );
 
@@ -306,13 +308,13 @@ abstract class AbstractRunner implements RunnerInterface {
         $success = TRUE;
       } catch (\Exception $e) {
         $progress = $this->runnableDone();
-        $this->task->onRunnableError($next_runnable, $e, $progress);
+        $this->task->onRunnableError($this->instance_state, $next_runnable, $e, $progress);
         $this->controller->onRunnableError($next_runnable, $e, $progress);
       }
 
       if ($success) {
         $progress = $this->runnableDone();
-        $this->task->onRunnableComplete($next_runnable, $result, $aggregator, $progress);
+        $this->task->onRunnableComplete($this->instance_state, $next_runnable, $result, $aggregator, $progress);
         $this->controller->onRunnableComplete($next_runnable, $result, $progress);
       }
 
@@ -369,11 +371,11 @@ abstract class AbstractRunner implements RunnerInterface {
         }
       }
       $response = $this->task->assembleResultResponse($results);
-      $this->controller->onTaskComplete($this->scheduled_task);
+      $this->controller->onTaskComplete($this->instance_state);
       $this->finalizeTask($aggregator, $this->getRunnerId());
       return $response;
     } else {
-      $this->finalizeRunner($results_this_runner, $next_runnable, $this->getRunnerId(), $aggregator);
+      $this->finalizeRunner($results_this_runner, $next_runnable, $this->instance_state, $this->getRunnerId(), $aggregator);
       return NULL;
     }
   }

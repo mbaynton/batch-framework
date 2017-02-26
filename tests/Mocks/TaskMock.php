@@ -9,6 +9,7 @@ use mbaynton\BatchFramework\Datatype\ProgressInfo;
 use mbaynton\BatchFramework\RunnableInterface;
 use mbaynton\BatchFramework\RunnableResultAggregatorInterface;
 use mbaynton\BatchFramework\RunnerInterface;
+use mbaynton\BatchFramework\TaskInstanceStateInterface;
 use mbaynton\BatchFramework\TaskInterface;
 
 class TaskMock implements TaskInterface {
@@ -48,28 +49,28 @@ class TaskMock implements TaskInterface {
     }
   }
 
-  public function getMinRunners() {
+  public function getMinRunners(TaskInstanceStateInterface $instance_state) {
     return 1;
   }
 
-  public function getMaxRunners() {
+  public function getMaxRunners(TaskInstanceStateInterface $instance_state) {
     return 0;
   }
 
-  public function getRunnableIterator(RunnerInterface $runner, $rank, $total_runners, $last_processed_runnable_id) {
+  public function getRunnableIterator(TaskInstanceStateInterface $instance_state, RunnerInterface $runner, $rank, $last_processed_runnable_id) {
     if ($last_processed_runnable_id == 0) {
       $next = $rank;
     } else {
-      $next = $last_processed_runnable_id + $total_runners;
+      $next = $last_processed_runnable_id + $instance_state->getNumRunners();
     }
-    return new RunnableMockIterator($this, $next, $total_runners);
+    return new RunnableMockIterator($this, $next, $instance_state->getNumRunners());
   }
 
   public function getNumRunnables() {
     return $this->num_runnables;
   }
 
-  public function onRunnableComplete(RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress) {
+  public function onRunnableComplete(TaskInstanceStateInterface $instance_state, RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress) {
     // This is a stupid example. Don't gratuitously collect meaningless result data in real code.
     // The more data, the worse the performance.
     $this->num_on_complete++;
@@ -84,7 +85,7 @@ class TaskMock implements TaskInterface {
     return count($aggregator->getCollectedResults());
   }
 
-  public function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress) {
+  public function onRunnableError(TaskInstanceStateInterface $instance_state, RunnableInterface $runnable, $exception, ProgressInfo $progress) {
     $this->num_on_error++;
   }
 

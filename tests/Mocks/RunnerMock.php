@@ -7,8 +7,8 @@ use mbaynton\BatchFramework\AbstractRunner;
 use mbaynton\BatchFramework\Controller\RunnerControllerInterface;
 use mbaynton\BatchFramework\RunnableInterface;
 use mbaynton\BatchFramework\RunnableResultAggregatorInterface;
-use mbaynton\BatchFramework\ScheduledTask;
-use mbaynton\BatchFramework\ScheduledTaskInterface;
+use mbaynton\BatchFramework\TaskInstanceState;
+use mbaynton\BatchFramework\TaskInstanceStateInterface;
 
 /**
  * Class RunnerMock
@@ -103,11 +103,9 @@ class RunnerMock extends AbstractRunner {
     return parent::runnableDone();
   }
 
-  public function attachScheduledTask(ScheduledTaskInterface $scheduledTask) {
-    $this->task = $scheduledTask->getTask();
-    $this->scheduled_task = $scheduledTask;
-    if (! array_key_exists($this->scheduled_task->getTaskId(), self::$task_result_cache_by_task_id)) {
-      self::$task_result_cache_by_task_id[$this->scheduled_task->getTaskId()] = [];
+  public function attachScheduledTask(TaskInstanceStateInterface $instance_state) {
+    if (! array_key_exists($instance_state->getTaskId(), self::$task_result_cache_by_task_id)) {
+      self::$task_result_cache_by_task_id[$instance_state->getTaskId()] = [];
     }
   }
 
@@ -124,7 +122,7 @@ class RunnerMock extends AbstractRunner {
 
     if ($this->task->supportsUnaryPartialResult()) {
 
-      $task_id = $this->scheduled_task->getTaskId();
+      $task_id = $this->instance_state->getTaskId();
       $runner_id = $this->getRunnerId();
       $state['partial_result'] =
         isset(self::$task_result_cache_by_task_id[$task_id]["$runner_id.PartialResult"])
@@ -136,7 +134,7 @@ class RunnerMock extends AbstractRunner {
   }
 
   public function getIncompleteRunnerIds() {
-    $all = $this->scheduled_task->getRunnerIds();
+    $all = $this->instance_state->getRunnerIds();
     $incomplete = [];
     foreach($all as $test_id) {
       if (empty(self::$cache_by_id[$test_id]['done'])) {
@@ -148,7 +146,7 @@ class RunnerMock extends AbstractRunner {
 
   protected function retrieveAllResultData() {
     $results = [];
-    $task_id = $this->scheduled_task->getTaskId();
+    $task_id = $this->instance_state->getTaskId();
     if ($this->task->supportsUnaryPartialResult()) {
       foreach (self::$task_result_cache_by_task_id[$task_id] as $partial_result) {
         $results[] = $partial_result;
@@ -161,12 +159,12 @@ class RunnerMock extends AbstractRunner {
   }
 
   protected function finalizeTask(RunnableResultAggregatorInterface $aggregator, $runner_id) {
-    unset(self::$task_result_cache_by_task_id[$this->scheduled_task->getTaskId()]);
+    unset(self::$task_result_cache_by_task_id[$this->instance_state->getTaskId()]);
     unset(self::$cache_by_id[$this->runner_id]);
   }
 
-  protected function finalizeRunner($new_result_data, RunnableInterface $last_processed_runnable = NULL, $runner_id, RunnableResultAggregatorInterface $aggregator = NULL) {
-    $task_id = $this->scheduled_task->getTaskId();
+  protected function finalizeRunner($new_result_data, RunnableInterface $last_processed_runnable = NULL, TaskInstanceStateInterface $instance_state, $runner_id, RunnableResultAggregatorInterface $aggregator = NULL) {
+    $task_id = $this->instance_state->getTaskId();
     $cache = &self::$task_result_cache_by_task_id[$task_id];
 
     // Persist non-null $new_result_data
