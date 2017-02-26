@@ -14,11 +14,6 @@ use mbaynton\BatchFramework\TaskInterface;
 
 class TaskMock implements TaskInterface {
   /**
-   * @var int $num_runnables
-   */
-  protected $num_runnables;
-
-  /**
    * @var int $num_on_complete
    */
   protected $num_on_complete = 0;
@@ -34,27 +29,38 @@ class TaskMock implements TaskInterface {
   public $static_task_callable;
 
   /**
+   * @var int $min_runners
+   */
+  protected $min_runners;
+
+  /**
+   * @var int $max_runners
+   */
+  protected $max_runners;
+
+  /**
    * TaskMock constructor.
-   * @param int $num_runnables
+   *
    * @param callable|null $action
    *   A specific thing for each Runner to actually do.
    */
-  public function __construct($num_runnables, $action = NULL) {
-    $this->num_runnables = $num_runnables;
-
+  public function __construct($action = NULL, $min_runners = NULL, $max_runners = NULL) {
     if (is_callable($action)) {
       $this->static_task_callable = $action;
     } else {
       $this->static_task_callable = function() {};
     }
+
+    $this->min_runners = $min_runners === NULL ? 1 : $min_runners;
+    $this->max_runners = $max_runners === NULL ? 0 : $max_runners;
   }
 
   public function getMinRunners(TaskInstanceStateInterface $instance_state) {
-    return 1;
+    return $this->min_runners;
   }
 
   public function getMaxRunners(TaskInstanceStateInterface $instance_state) {
-    return 0;
+    return $this->max_runners;
   }
 
   public function getRunnableIterator(TaskInstanceStateInterface $instance_state, RunnerInterface $runner, $rank, $last_processed_runnable_id) {
@@ -63,11 +69,7 @@ class TaskMock implements TaskInterface {
     } else {
       $next = $last_processed_runnable_id + $instance_state->getNumRunners();
     }
-    return new RunnableMockIterator($this, $next, $instance_state->getNumRunners());
-  }
-
-  public function getNumRunnables() {
-    return $this->num_runnables;
+    return new RunnableMockIterator($this, $next, $instance_state->getNumRunners(), $instance_state->getNumRunnables());
   }
 
   public function onRunnableComplete(TaskInstanceStateInterface $instance_state, RunnableInterface $runnable, $result, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress) {

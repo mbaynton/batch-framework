@@ -138,8 +138,8 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testGetIncarnationTargetRuntime() {
-    $task = new TaskMock(10, 0);
-    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-');
+    $task = new TaskMock();
+    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-', 10);
     $sut = $this->sutFactory(20, 1, $schedule, ['target_completion_seconds' => 42]);
 
     $this->assertEquals(
@@ -150,13 +150,14 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAbstractRunnerCompletesTask_OneIncarnation() {
-    $task = new TaskMock(10, 0);
-    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-');
+    $task = new TaskMock();
+    $num_runnables = 10;
+    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-', $num_runnables);
     $controller = new RunnerControllerMock();
     $sut = $this->sutFactory(20, 1, $schedule, ['controller' => $controller]);
     $result = $sut->run($task, $schedule);
     $this->assertEquals(
-      10,
+      $num_runnables,
       $result->getBody()->getContents()
     );
     $this->assertEquals(
@@ -166,8 +167,9 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAbstractRunnerCompletesTask_MultipleIncarnations() {
-    $task = new TaskMock(30, 0);
-    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-');
+    $task = new TaskMock();
+    $num_runnables = 30;
+    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-', $num_runnables);
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
     while (($result = $sut->run($task, $schedule)) === NULL) {
@@ -179,7 +181,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
       $num_incarnations
     );
     $this->assertEquals(
-      30,
+      $num_runnables,
       $result->getBody()->getContents()
     );
   }
@@ -188,8 +190,8 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     // Like the above test, but finish the overall Task partway through the
     // last Runner lifecycle.
     $num_runnables = 25;
-    $task = new TaskMock($num_runnables, 0);
-    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-');
+    $task = new TaskMock();
+    $schedule = new TaskInstanceState($task, $this->assignTaskId(), [1], '-', $num_runnables);
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
     while (($result = $sut->run($task, $schedule)) === NULL) {
@@ -207,8 +209,8 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testAbstractRunnerCompletesTask_MultipleRunners_MultipleIncarnations() {
-    $task = new TaskMock(30, 0);
-    $this->_multipleRunners_MultipleIncarnations($task);
+    $task = new TaskMock();
+    $this->_multipleRunners_MultipleIncarnations($task, 30);
   }
 
   public function testAbstractRunnerCompletesNonUnaryTasks_EvenRunnerMultiple() {
@@ -227,7 +229,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     $this->_testAbstractRunnerCompletesNonUnaryTasks(29, FALSE);
   }
 
-  protected function _testAbstractRunnerCompletesNonUnaryTasks($num_runners, $supports_reduction) {
+  protected function _testAbstractRunnerCompletesNonUnaryTasks($num_runnables, $supports_reduction) {
     $task = $this->getMockBuilder('\mbaynton\BatchFramework\Tests\Mocks\TaskMock')
       ->setMethods([
         'supportsUnaryPartialResult',
@@ -235,7 +237,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
         'supportsReduction'
       ])
       ->enableOriginalConstructor()
-      ->setConstructorArgs([$num_runners, 0])
+      ->setConstructorArgs([])
       ->getMock();
     $task->method('supportsUnaryPartialResult')->willReturn(FALSE);
     $task->method('supportsReduction')->willReturn($supports_reduction);
@@ -250,13 +252,13 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
       return new Response(200, [], array_sum($final_results));
     });
 
-    $this->_multipleRunners_MultipleIncarnations($task);
+    $this->_multipleRunners_MultipleIncarnations($task, $num_runnables);
   }
 
-  protected function _multipleRunners_MultipleIncarnations(TaskInterface $task) {
+  protected function _multipleRunners_MultipleIncarnations(TaskInterface $task, $num_runnables) {
     // Some arbitrary Runner IDs should not impact anything if in sorted order.
     $runner_ids = [412 + static::$monotonic_runner_id++, 562 + static::$monotonic_runner_id++, 628 + static::$monotonic_runner_id++];
-    $schedule = new TaskInstanceState($task, $this->assignTaskId(), $runner_ids, '-');
+    $schedule = new TaskInstanceState($task, $this->assignTaskId(), $runner_ids, '-', $num_runnables);
     foreach ($runner_ids as $runner_id) {
       $runners[$runner_id] = $this->sutFactory(5, $runner_id, $schedule);
     }
@@ -280,7 +282,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     }
 
     $this->assertEquals(
-      $task->getNumRunnables(),
+      $num_runnables,
       $result->getBody()->getContents()
     );
     $this->assertEquals(
@@ -306,13 +308,13 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
 
     $controller = new RunnerControllerMock();
 
-    $task = new TaskMock($num_runnables);
+    $task = new TaskMock();
     if (! $runner_succeeds) {
       $task->static_task_callable = function() {
         throw new \Exception('Mocked runnable error.');
       };
     }
-    $scheduled_task = new TaskInstanceState($task, $this->assignTaskId(), [1], '-');
+    $scheduled_task = new TaskInstanceState($task, $this->assignTaskId(), [1], '-', $num_runnables);
 
     $runner = $this->sutFactory(-1, 1, $scheduled_task, ['controller' => $controller]);
 

@@ -34,13 +34,14 @@ class RunnableMockIterator extends AbstractRunnableIterator {
    * @param \mbaynton\BatchFramework\Tests\Mocks\TaskMock $task
    * @param int $first
    * @param int $increment
+   * @param int $last
    * @param int $ms_per_runnable
    */
-  public function __construct(TaskMock $task, $first, $increment) {
+  public function __construct(TaskMock $task, $first, $increment, $last) {
     $this->task = $task;
     $this->first = $first;
     $this->increment = $increment;
-    $this->last = $task->getNumRunnables() - 1;
+    $this->last = $last - 1;
     $this->rewind();
   }
 

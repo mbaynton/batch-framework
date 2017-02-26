@@ -104,7 +104,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $sut = new RunnerMock($controller, $ts, AbstractRunnerTest::$monotonic_runner_id++, $target_seconds, $use_signaling);
 
     if ($task !== NULL) {
-      $scheduledTask = new TaskInstanceState($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-');
+      $num_runnables = isset($opts['num_runnables']) ? $opts['num_runnables'] : 5;
+      $scheduledTask = new TaskInstanceState($task, AbstractRunnerTest::$monotonic_task_id++, [$sut->getRunnerId()], '-', $num_runnables);
       $this->current_schedule = $scheduledTask;
       $sut->attachScheduledTask($scheduledTask);
     }
@@ -202,7 +203,8 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
       $sut = $this->sutFactory($task, [
         'controller' => $controller,
         'measured_time' => 0,
-        'alarm_signal_works' => $alarm_signal_works
+        'alarm_signal_works' => $alarm_signal_works,
+        'num_runnables' => $num_runnables
       ]);
 
       $expected_microtime = 0;
@@ -252,11 +254,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 7;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $task = new TaskMock(50);
+      $task = new TaskMock();
       $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
+        'num_runnables' => 50,
       ]);
 
       // With radically different runtimes and no alarm signal, quite a bit
@@ -294,11 +297,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 20;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $task = new TaskMock(251);
+      $task = new TaskMock();
       $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
+        'num_runnables' => 251,
       ]);
 
       $theoretical_target_walltime = (($target_seconds + 1.2) * 1e6) + $this->ts->peekMicrotime();
@@ -338,11 +342,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max_microtime_calls = ($target_seconds / 0.7) + $startup_constant;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $task = new TaskMock($theoretical_max + 1);
+      $task = new TaskMock();
       $sut = $this->sutFactory($task, [
         'measured_time' => 0,
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => 10,
+        'num_runnables' => $theoretical_max + 1,
       ]);
 
       $this->ts->expects($this->atLeast(7))->method('microtime');
@@ -377,11 +382,12 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $theoretical_max = ($target_seconds * 10e5) / $runnable_duration_usecs;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $task = new TaskMock($theoretical_max + 1);
+      $task = new TaskMock();
       $sut = $this->sutFactory($task, [
         'measured_time' => 0, // no auto-increment
         'alarm_signal_works' => $alarm_signal_works,
         'target_completion_seconds' => $target_seconds,
+        'num_runnables' => $theoretical_max + 1,
       ]);
 
       $theoretical_target_walltime = $this->ts->peekMicrotime() + ($runnable_duration_usecs * $theoretical_max);
@@ -446,14 +452,15 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
     $target_seconds = 8;
 
     foreach ([TRUE, FALSE] as $alarm_signal_works) {
-      $task = new TaskMock(10, function() {
+      $task = new TaskMock(function() {
         throw new \Exception ('Simulated failure in runnable');
       });
       $sut = $this->sutFactory($task,
         [
-        'measured_time' => 1e6,
-        'alarm_signal_works' => $alarm_signal_works,
-        'target_completion_seconds' => $target_seconds,
+          'measured_time' => 1e6,
+          'alarm_signal_works' => $alarm_signal_works,
+          'target_completion_seconds' => $target_seconds,
+          'num_runnables' => 10,
       ]);
 
       $theoretical_target_walltime = (($target_seconds + 1.01) * 1e6) + $this->ts->peekMicrotime();
