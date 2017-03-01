@@ -34,19 +34,14 @@ class TaskInstanceState implements TaskInstanceStateInterface {
   /**
    * TaskState constructor.
    *
-   * @param TaskInterface $task
    * @param int $task_id
-   * @param int[] $runner_ids
    * @param string $session_id
    * @param int $num_runnables_estimate
+   * @param int $max_runners
    */
-  public function __construct(TaskInterface $task, $task_id, $runner_ids, $session_id, $num_runnables_estimate) {
+  public function __construct($task_id, $session_id, $num_runnables_estimate) {
     $this->task_id = $task_id;
-    if ($task->getMaxRunners($this) > 0) {
-      $this->runner_ids = array_splice($runner_ids, 0, $task->getMaxRunners($this));
-    } else {
-      $this->runner_ids = $runner_ids;
-    }
+
     $this->session_id = $session_id;
     $this->num_runnables = $num_runnables_estimate;
     $this->num_runnables_delta = 0;
