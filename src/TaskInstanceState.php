@@ -40,8 +40,6 @@ class TaskInstanceState implements TaskInstanceStateInterface {
    * TaskState constructor.
    *
    * @param int $task_id
-   * @param string $session_id
-   *   The id of the session that is currently running this task instance.
    * @param int $num_runnables_estimate
    *   Approximate number of runnables that will be run to complete the task.
    * @param int[]|null $runner_ids
@@ -50,11 +48,14 @@ class TaskInstanceState implements TaskInstanceStateInterface {
    *   application must call setRunnerIds before run()ning the task instance.
    *
    *   The array size must equal $num_runners.
-   *
+   * @param string|null $session_id
+   *   The id of the session that is currently running this task instance.
+   *   This optional property can help controllers verify that a request should
+   *   be used for a runner of this task, but is not used by the framework.
    * @throws \InvalidArgumentException
    *   If $runner_ids is given and not an array of length equal to $num_runners.
    */
-  public function __construct($task_id, $session_id, $num_runners, $num_runnables_estimate, $runner_ids = NULL) {
+  public function __construct($task_id, $num_runners, $num_runnables_estimate, $runner_ids = NULL, $session_id = NULL) {
     $this->task_id = $task_id;
 
     $this->session_id = $session_id;
@@ -110,6 +111,10 @@ class TaskInstanceState implements TaskInstanceStateInterface {
 
   public function getRunnerIds() {
     return $this->runner_ids;
+  }
+
+  public function setOwnerSession($session_id) {
+    $this->session_id = $session_id;
   }
 
   public function getOwnerSession() {

@@ -11,10 +11,10 @@ class TaskInstanceStateTest extends \PHPUnit_Framework_TestCase {
   protected function sutFactory($opts) {
     return new TaskInstanceState(
       1,
-      isset($opts['session']) ? $opts['session'] : '-',
       isset($opts['num_runners']) ? $opts['num_runners'] : 1,
       isset($opts['num_runnables']) ? $opts['num_runnables'] : 10,
-      isset($opts['runner_ids']) ? $opts['runner_ids'] : [1]
+      isset($opts['runner_ids']) ? $opts['runner_ids'] : [1],
+      isset($opts['session']) ? $opts['session'] : NULL
     );
   }
 
@@ -43,6 +43,13 @@ class TaskInstanceStateTest extends \PHPUnit_Framework_TestCase {
     $sut = $this->sutFactory(['session' => 'fred']);
     $this->assertEquals(
       'fred',
+      $sut->getOwnerSession()
+    );
+
+    $sut = $this->sutFactory([]);
+    $sut->setOwnerSession('fred23');
+    $this->assertEquals(
+      'fred23',
       $sut->getOwnerSession()
     );
   }

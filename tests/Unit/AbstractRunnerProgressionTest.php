@@ -105,7 +105,7 @@ class AbstractRunnerProgressionTest extends \PHPUnit_Framework_TestCase {
 
     if ($task !== NULL) {
       $num_runnables = isset($opts['num_runnables']) ? $opts['num_runnables'] : 5;
-      $scheduledTask = new TaskInstanceState(AbstractRunnerTest::$monotonic_task_id++, '-', 1, $num_runnables);
+      $scheduledTask = new TaskInstanceState(AbstractRunnerTest::$monotonic_task_id++,  1, $num_runnables);
       $scheduledTask->setRunnerIds([$sut->getRunnerId()]);
 
       $this->current_schedule = $scheduledTask;

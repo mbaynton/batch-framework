@@ -138,7 +138,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testGetIncarnationTargetRuntime() {
-    $schedule = new TaskInstanceState($this->assignTaskId(), '-', 1, 10, [1]);
+    $schedule = new TaskInstanceState($this->assignTaskId(),  1, 10, [1]);
     $sut = $this->sutFactory(20, 1, $schedule, ['target_completion_seconds' => 42]);
 
     $this->assertEquals(
@@ -151,7 +151,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   public function testAbstractRunnerCompletesTask_OneIncarnation() {
     $task = new TaskMock();
     $num_runnables = 10;
-    $schedule = new TaskInstanceState($this->assignTaskId(), '-', 1, $num_runnables, [1]);
+    $schedule = new TaskInstanceState($this->assignTaskId(),  1, $num_runnables, [1]);
     $controller = new RunnerControllerMock();
     $sut = $this->sutFactory(20, 1, $schedule, ['controller' => $controller]);
     $result = $sut->run($task, $schedule);
@@ -168,7 +168,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   public function testAbstractRunnerCompletesTask_MultipleIncarnations() {
     $task = new TaskMock();
     $num_runnables = 30;
-    $schedule = new TaskInstanceState($this->assignTaskId(), '-', 1, $num_runnables, [1]);
+    $schedule = new TaskInstanceState($this->assignTaskId(),  1, $num_runnables, [1]);
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
     while (($result = $sut->run($task, $schedule)) === NULL) {
@@ -190,7 +190,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     // last Runner lifecycle.
     $num_runnables = 25;
     $task = new TaskMock();
-    $schedule = new TaskInstanceState($this->assignTaskId(), '-', 1, $num_runnables, [1]);
+    $schedule = new TaskInstanceState($this->assignTaskId(),  1, $num_runnables, [1]);
     $sut = $this->sutFactory(10, 1, $schedule);
     $num_incarnations = 1;
     while (($result = $sut->run($task, $schedule)) === NULL) {
@@ -257,7 +257,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
   protected function _multipleRunners_MultipleIncarnations(TaskInterface $task, $num_runnables) {
     // Some arbitrary Runner IDs should not impact anything if in sorted order.
     $runner_ids = [412 + static::$monotonic_runner_id++, 562 + static::$monotonic_runner_id++, 628 + static::$monotonic_runner_id++];
-    $schedule = new TaskInstanceState($this->assignTaskId(), '-', count($runner_ids), $num_runnables);
+    $schedule = new TaskInstanceState($this->assignTaskId(),  count($runner_ids), $num_runnables);
     $schedule->setRunnerIds($runner_ids);
     foreach ($runner_ids as $runner_id) {
       $runners[$runner_id] = $this->sutFactory(5, $runner_id, $schedule);
@@ -314,7 +314,7 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
         throw new \Exception('Mocked runnable error.');
       };
     }
-    $scheduled_task = new TaskInstanceState($this->assignTaskId(), '-', 1, $num_runnables, [1]);
+    $scheduled_task = new TaskInstanceState($this->assignTaskId(),  1, $num_runnables, [1]);
 
     $runner = $this->sutFactory(-1, 1, $scheduled_task, ['controller' => $controller]);
 
