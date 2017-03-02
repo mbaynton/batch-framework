@@ -9,19 +9,17 @@ use mbaynton\BatchFramework\Tests\Mocks\TaskMock;
 
 class TaskInstanceStateTest extends \PHPUnit_Framework_TestCase {
   protected function sutFactory($opts) {
-    $task = new TaskMock(NULL, @$opts['min_runners'], @$opts['max_runners']);
-
     return new TaskInstanceState(
-      $task,
       1,
-      [1,2,3,4,5],
       isset($opts['session']) ? $opts['session'] : '-',
-      isset($opts['num_runnables']) ? $opts['num_runnables'] : 10
+      isset($opts['num_runners']) ? $opts['num_runners'] : 1,
+      isset($opts['num_runnables']) ? $opts['num_runnables'] : 10,
+      isset($opts['runner_ids']) ? $opts['runner_ids'] : [1]
     );
   }
 
-  public function testMaxRunners() {
-    $sut = $this->sutFactory(['max_runners' => 3]);
+  public function testNumRunners() {
+    $sut = $this->sutFactory(['num_runners' => 3, 'runner_ids' => [1,2,3]]);
 
     $this->assertEquals(
       [1,2,3],
@@ -32,6 +30,13 @@ class TaskInstanceStateTest extends \PHPUnit_Framework_TestCase {
       3,
       $sut->getNumRunners()
     );
+  }
+
+  /**
+   * @expectedException \InvalidArgumentException
+   */
+  public function testRunnerIdsValidation() {
+    $sut = $this->sutFactory(['num_runners' => 2, 'runner_ids' => [1,2,3]]);
   }
 
   public function testOwnerSession() {

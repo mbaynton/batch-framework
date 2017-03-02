@@ -17,6 +17,11 @@ class TaskInstanceState implements TaskInstanceStateInterface {
   protected $session_id;
 
   /**
+   * @var int $num_runners
+   */
+  protected $num_runners;
+
+  /**
    * @var int $num_runnables
    */
   protected $num_runnables;
@@ -36,20 +41,71 @@ class TaskInstanceState implements TaskInstanceStateInterface {
    *
    * @param int $task_id
    * @param string $session_id
+   *   The id of the session that is currently running this task instance.
    * @param int $num_runnables_estimate
-   * @param int $max_runners
+   *   Approximate number of runnables that will be run to complete the task.
+   * @param int[]|null $runner_ids
+   *   If known at construction time, the set of unique runner id numbers that
+   *   have been reserved for runners executing this task. If not provided, the
+   *   application must call setRunnerIds before run()ning the task instance.
+   *
+   *   The array size must equal $num_runners.
+   *
+   * @throws \InvalidArgumentException
+   *   If $runner_ids is given and not an array of length equal to $num_runners.
    */
-  public function __construct($task_id, $session_id, $num_runnables_estimate) {
+  public function __construct($task_id, $session_id, $num_runners, $num_runnables_estimate, $runner_ids = NULL) {
     $this->task_id = $task_id;
 
     $this->session_id = $session_id;
+    $this->num_runners = $num_runners;
+    if ($runner_ids !== NULL) {
+      if ($this->_validateRunnerIds($runner_ids)) {
+        $this->runner_ids = $runner_ids;
+      }
+    }
     $this->num_runnables = $num_runnables_estimate;
     $this->num_runnables_delta = 0;
     $this->has_updates = FALSE;
   }
 
+  protected function _validateRunnerIds($runner_ids) {
+    if (is_array($runner_ids)) {
+      if (count($runner_ids) == $this->num_runners) {
+        return TRUE;
+      } else {
+        throw new \InvalidArgumentException(sprintf('Conflicting arguments: num_runners = %s, but %d runner ids were provided.',
+          $this->num_runners,
+          count($runner_ids)));
+      }
+    } else {
+      throw new \InvalidArgumentException('$runner_ids must be an array.');
+    }
+  }
+
+  /**
+   * @return int
+   */
   public function getNumRunners() {
-    return count($this->runner_ids);
+    return $this->num_runners;
+  }
+
+  /**
+   * Sets the unique runner id numbers that have been reserved for runners
+   * executing this task.
+   *
+   * If the runner ids were not provided to the constructor, they must be
+   * set via this method before the instance is run.
+   *
+   * @param int[] $runnerIds
+   *
+   * @throws \InvalidArgumentException
+   *   If the size of $runner_ids is not equal to getNumRunners().
+   */
+  public function setRunnerIds(array $runner_ids) {
+    if ($this->_validateRunnerIds($runner_ids)) {
+      $this->runner_ids = $runner_ids;
+    }
   }
 
   public function getRunnerIds() {
