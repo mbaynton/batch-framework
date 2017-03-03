@@ -13,11 +13,6 @@ class AbstractRunnableTest extends \PHPUnit_Framework_TestCase {
     $runnable = new RunnableMock($task, 2, 0);
 
     $this->assertEquals(
-      $task,
-      $runnable->getTask()
-    );
-
-    $this->assertEquals(
       2,
       $runnable->getId()
     );

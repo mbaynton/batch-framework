@@ -15,8 +15,7 @@ abstract class AbstractRunnable implements RunnableInterface {
    */
   protected $runnable_id;
 
-  public function __construct(TaskInterface $parent_task, $runnable_id) {
-    $this->parent_task = $parent_task;
+  public function __construct($runnable_id) {
     $this->runnable_id = $runnable_id;
   }
 
@@ -24,9 +23,5 @@ abstract class AbstractRunnable implements RunnableInterface {
     return $this->runnable_id;
   }
 
-  public function getTask() {
-    return $this->parent_task;
-  }
-
-  abstract function run();
+  abstract function run(TaskInterface $task, TaskInstanceStateInterface $instance_state);
 }

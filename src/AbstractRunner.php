@@ -304,7 +304,7 @@ abstract class AbstractRunner implements RunnerInterface {
       $success = FALSE;
       $result = NULL;
       try {
-        $result = $next_runnable->run();
+        $result = $next_runnable->run($task, $instance_state);
         $success = TRUE;
       } catch (\Exception $e) {
         $progress = $this->runnableDone();

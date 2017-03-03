@@ -5,9 +5,7 @@ namespace mbaynton\BatchFramework;
 
 
 interface RunnableInterface {
-  function run();
-
-  function getTask();
+  function run(TaskInterface $task, TaskInstanceStateInterface $task_state);
 
   /**
    * @return int
