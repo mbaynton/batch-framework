@@ -44,23 +44,12 @@ class TaskMock implements TaskInterface {
    * @param callable|null $action
    *   A specific thing for each Runner to actually do.
    */
-  public function __construct($action = NULL, $min_runners = NULL, $max_runners = NULL) {
+  public function __construct($action = NULL) {
     if (is_callable($action)) {
       $this->static_task_callable = $action;
     } else {
       $this->static_task_callable = function() {};
     }
-
-    $this->min_runners = $min_runners === NULL ? 1 : $min_runners;
-    $this->max_runners = $max_runners === NULL ? 0 : $max_runners;
-  }
-
-  public function getMinRunners(TaskInstanceStateInterface $instance_state) {
-    return $this->min_runners;
-  }
-
-  public function getMaxRunners(TaskInstanceStateInterface $instance_state) {
-    return $this->max_runners;
   }
 
   public function getRunnableIterator(TaskInstanceStateInterface $instance_state, RunnerInterface $runner, $rank, $last_processed_runnable_id) {

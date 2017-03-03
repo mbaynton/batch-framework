@@ -10,32 +10,6 @@ use Psr\Http\Message\ResponseInterface;
 interface TaskInterface {
 
   /**
-   * Sets a lower limit on the number of Runners that will run this Task.
-   *
-   * This is not a guarantee of a particular level of concurrency, only that
-   * this many logical Runner IDs will be assigned to the Task.
-   *
-   * Setting such bounds can simplify implementing getRunnableIterator()
-   * and/or the Iterator it returns.
-   *
-   * @return int
-   */
-  function getMinRunners(TaskInstanceStateInterface $schedule);
-
-  /**
-   * Sets an upper limit on the number of Runners that will run this Task.
-   *
-   * @return int
-   *   The maximum number of Runnables that may be dispatched concurrently.
-   *
-   *   Return 1 to disable parallelization.
-   *
-   *   Values <= 0 cause the amount of concurrency to be limited only by
-   *   TaskStateInterface.
-   */
-  function getMaxRunners(TaskInstanceStateInterface $schedule);
-
-  /**
    * Instantiates the next Runnable that should be processed by the Runner.
    *
    * @param TaskInstanceStateInterface $schedule
