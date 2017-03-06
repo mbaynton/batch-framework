@@ -86,4 +86,50 @@ class TaskInstanceStateTest extends \PHPUnit_Framework_TestCase {
     );
     $this->assertTrue($sut->hasUpdates());
   }
+
+  public function testSerialization() {
+    $sut = $this->sutFactory([]);
+    $sut->updateNumRunnables(1);
+    $this->assertEquals(1, $sut->getUpdate_NumRunnables());
+
+    $serialized = serialize($sut);
+    /**
+     * @var TaskInstanceState $unserialized
+     */
+    $unserialized = unserialize($serialized);
+
+    $this->assertInstanceOf('\mbaynton\BatchFramework\TaskInstanceState', $unserialized);
+
+    $this->assertEquals(
+      $sut->getRunnerIds(),
+      $unserialized->getRunnerIds()
+    );
+
+    $this->assertEquals(
+      $sut->getNumRunnables(),
+      $unserialized->getNumRunnables()
+    );
+
+    $this->assertEquals(
+      $sut->getNumRunners(),
+      $unserialized->getNumRunners()
+    );
+
+    $this->assertEquals(
+      $sut->getTaskId(),
+      $unserialized->getTaskId()
+    );
+
+    $this->assertEquals(
+      $sut->getOwnerSession(),
+      $unserialized->getOwnerSession()
+    );
+
+    $this->assertEquals(
+      0,
+      $unserialized->getUpdate_NumRunnables()
+    );
+
+    $this->assertFalse($unserialized->hasUpdates());
+  }
 }

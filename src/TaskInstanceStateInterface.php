@@ -17,7 +17,7 @@ namespace mbaynton\BatchFramework;
  * add getUpdate_NumRunnables(), and write it back. You can skip this processing
  * when hasUpdates() is FALSE or getUpdate_NumRunnables() is zero.
  */
-interface TaskInstanceStateInterface {
+interface TaskInstanceStateInterface extends \Serializable {
   /**
    * @return int
    */

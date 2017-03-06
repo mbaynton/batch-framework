@@ -143,4 +143,35 @@ class TaskInstanceState implements TaskInstanceStateInterface {
     return $this->has_updates;
   }
 
+  protected function getSerializeProperties() {
+    $properties = [
+      'task_id',
+      'runner_ids',
+      'session_id',
+      'num_runners',
+      'num_runnables',
+    ];
+    return $properties;
+  }
+
+  public function serialize() {
+    $data = [];
+    foreach ($this->getSerializeProperties() as $property) {
+      $data[$property] = $this->$property;
+    }
+    return serialize($data);
+  }
+
+  public function unserialize($serialized) {
+    $data = unserialize($serialized);
+    foreach ($this->getSerializeProperties() as $property) {
+      if(array_key_exists($property, $data)) {
+        $this->$property = $data[$property];
+      }
+    }
+
+    $this->num_runnables_delta = 0;
+    $this->has_updates = FALSE;
+  }
+
 }
