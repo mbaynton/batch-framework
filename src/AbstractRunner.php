@@ -40,7 +40,7 @@ abstract class AbstractRunner implements RunnerInterface {
   /**
    * @var FunctionWrappers $time_source
    */
-  protected $time_source;
+  protected $time_source = NULL;
 
   /**
    * @var bool $alarm_signal_works
@@ -154,7 +154,9 @@ abstract class AbstractRunner implements RunnerInterface {
     $this->alarm_signal_works = $alarm_signal_works;
     $this->alarm_signal_received = FALSE;
     $this->target_completion_seconds = $target_completion_seconds;
-    $this->time_source = FunctionWrappers::get($function_wrappers);
+    if ($this->time_source === NULL) {
+      $this->time_source = FunctionWrappers::get($function_wrappers);
+    }
     $this->last_measured_walltime = $this->time_source->microtime(TRUE);
     $this->start_walltime = $this->last_measured_walltime;
     $this->runnables_since_last_measurement = 0;
