@@ -53,7 +53,7 @@ class TaskMock implements TaskInterface {
   }
 
   public function getRunnableIterator(TaskInstanceStateInterface $instance_state, RunnerInterface $runner, $rank, $last_processed_runnable_id) {
-    if ($last_processed_runnable_id == 0) {
+    if ($last_processed_runnable_id === NULL) {
       $next = $rank;
     } else {
       $next = $last_processed_runnable_id + $instance_state->getNumRunners();

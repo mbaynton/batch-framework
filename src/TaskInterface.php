@@ -18,13 +18,16 @@ interface TaskInterface {
    *   A number between 0 and $num_total_runners - 1.
    * @param int $last_processed_runnable_id
    *   On the first incarnation of each Runner bearing a unique
-   *   $runner->getRunnerId(), this value will be 0. The iterator should start
-   *   with the first Runnable intended for this Runner.
+   *   $runner->getRunnerId(), this value will be null.
+   *   The iterator should start with the first Runnable for this Runner.
    *
    *   On subsequent incarnations, this will hold the id of the last Runnable
    *   that has already been processed by the last incarnation of this Runner.
    *   The iterator should start with the next Runnable in sequence for this
    *   Runner.
+   *
+   *   CAUTION: In the case of a task with a single Runnable, the id will be
+   *   0. Strict type checking of this parameter's NULLness is critical.
    * @return AbstractRunnableIterator
    */
   function getRunnableIterator(TaskInstanceStateInterface $schedule, RunnerInterface $runner, $runner_rank, $last_processed_runnable_id);

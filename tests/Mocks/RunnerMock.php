@@ -116,7 +116,7 @@ class RunnerMock extends AbstractRunner {
   protected function retrieveRunnerState() {
     $cache = self::$cache_by_id[$this->runner_id];
     $state = [
-      'last_completed_runnable_id' => isset($cache['LastCompletedRunnableId']) ? $cache['LastCompletedRunnableId'] : 0,
+      'last_completed_runnable_id' => isset($cache['LastCompletedRunnableId']) ? $cache['LastCompletedRunnableId'] : NULL,
       'incomplete_runner_ids' => $this->getIncompleteRunnerIds()
     ];
 

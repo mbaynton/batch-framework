@@ -188,9 +188,10 @@ abstract class AbstractRunner implements RunnerInterface {
   /**
    * @return array
    *   Associative array with:
-   *   - 'last_completed_runnable_id' int
+   *   - 'last_completed_runnable_id' int|null
    *     The numeric id of the last RunnableInterface processed by the last
-   *     incarnation of this Runner.
+   *     incarnation of this Runner. If this Runner has not executed previously,
+   *     is NULL.
    *   - 'incomplete_runner_ids' int[]
    *     The very same results that would be obtained by calling
    *     getIncompleteRunnerIds().
@@ -296,7 +297,7 @@ abstract class AbstractRunner implements RunnerInterface {
       $this->instance_state,
       $this,
       array_search($this->getRunnerId(), $this->instance_state->getRunnerIds()),
-      (empty($state['last_completed_runnable_id']) ? 0 : $state['last_completed_runnable_id'])
+      $state['last_completed_runnable_id']
     );
 
     $should_continue_running = TRUE;
