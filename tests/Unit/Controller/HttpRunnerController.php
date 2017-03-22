@@ -27,7 +27,7 @@ class HttpRunnerController implements RunnerControllerInterface  {
 
   public function onBeforeRunnableStarted(RunnableInterface $runnable) {}
 
-  public function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress) {}
+  public function onRunnableError(RunnableInterface $runnable, \Exception $exception, ProgressInfo $progress) {}
 
   public function onTaskComplete(TaskInstanceStateInterface $task) {}
 

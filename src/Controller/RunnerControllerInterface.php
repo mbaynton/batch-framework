@@ -50,14 +50,14 @@ interface RunnerControllerInterface {
    *
    * @param RunnableInterface $runnable
    *   The Runnable whos run() method threw an exception.
-   * @param $exception
+   * @param \Exception $exception
    *   The exception the Runnable threw.
    * @param ProgressInfo $progress
    *   Data describing the progress of this incarnation of the Runner.
    *
    * @return void
    */
-  function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress);
+  function onRunnableError(RunnableInterface $runnable, \Exception $exception, ProgressInfo $progress);
 
   /**
    * Called once per Task, after all Runnables have been processed.

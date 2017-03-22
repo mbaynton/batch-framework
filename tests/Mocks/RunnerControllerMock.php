@@ -35,7 +35,7 @@ class RunnerControllerMock implements RunnerControllerInterface {
     $this->num_on_complete++;
   }
 
-  public function onRunnableError(RunnableInterface $runnable, $exception, ProgressInfo $progress) {
+  public function onRunnableError(RunnableInterface $runnable, \Exception $exception, ProgressInfo $progress) {
     $this->num_runnables_left--;
     $this->num_on_error++;
   }
