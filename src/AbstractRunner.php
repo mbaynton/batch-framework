@@ -311,7 +311,7 @@ abstract class AbstractRunner implements RunnerInterface {
         $success = TRUE;
       } catch (\Exception $e) {
         $progress = $this->runnableDone();
-        $this->task->onRunnableError($this->instance_state, $next_runnable, $e, $progress);
+        $this->task->onRunnableError($this->instance_state, $next_runnable, $e, $aggregator, $progress);
         $this->controller->onRunnableError($next_runnable, $e, $progress);
       }
 

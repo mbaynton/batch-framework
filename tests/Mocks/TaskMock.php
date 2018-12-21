@@ -76,7 +76,7 @@ class TaskMock implements TaskInterface {
     return count($aggregator->getCollectedResults());
   }
 
-  public function onRunnableError(TaskInstanceStateInterface $instance_state, RunnableInterface $runnable, $exception, ProgressInfo $progress) {
+  public function onRunnableError(TaskInstanceStateInterface $instance_state, RunnableInterface $runnable, $exception, RunnableResultAggregatorInterface $aggregator, ProgressInfo $progress) {
     $this->num_on_error++;
   }
 
