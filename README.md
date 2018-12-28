@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/mbaynton/batch-framework/badge.svg?branch=master)](https://coveralls.io/github/mbaynton/batch-framework?branch=master)
 
 This library offers foundational algorithms and structures to enable scenarios
-where long-running jobs that can be divided into small work units get processed
+where long-running tasks that can be divided into small work units get processed
 progressively by successive calls to a PHP script on a webserver. This avoids
 exceeding script execution time and network timeout limitations often found in 
 web execution environments.
@@ -45,7 +45,7 @@ Documentation is accurate for `v1.0.0`.
 
 ### Terms and their definitions
   * **Runnable**:  
-    One of the user-implemented classes that models a long-running job. An instance of a Runnable
+    One of the user-implemented classes that models a long-running task. An instance of a Runnable
     models and provides the implementation for a single unit of work. It is its `run()`
     method whose body does the actual work/computation to further the Task's progress.
   * **Runnable Iterator**:  
@@ -79,17 +79,14 @@ Documentation is accurate for `v1.0.0`.
     support for `n` concurrent `Runner`s, this will range from `0` to `n-1`. Differs
     from `Runner id` in that its range is always `0` to `n-1`.
   * **Task**:  
-    One of the user-implemented classes that models a long-running job. The `Task`
+    One of the user-implemented classes that models a long-running task. The `Task`
     serves as a factory for `Runnable Iterator`s, tells the framework what to do
     with results of `Runnable`s, may intervene in the event a `Runnable` experiences
     a throwable error or exception, provides methods to reduce multiple `Runnable` results
     to simpler intermediate results, and provides a method to translate
-    the complete `Runnable` results to a `Psr\Http\Message\ResponseInterface`. (Packaging
-    the batch run's overall result as a standard HTTP response format enables advanced
-    clients such as single-page applications or mobile apps to transparently delegate
-    some requests to the batch framework while responding directly to other requests.)
+    the complete `Runnable` results to a `Psr\Http\Message\ResponseInterface`.
   * **Task instance state**:  
-    One of the user-implemented classes that models a long-running job. Task instance
+    One of the user-implemented classes that models a long-running task. Task instance
     state captures the variable properties of a given task execution, such as where to
     find inputs to operate on, who (in terms of PHP session id) is currently running
     this `Task`, how large the `Task` is estimated to be (in terms of `Runnable`s), and
@@ -103,10 +100,11 @@ of `AbstractRunner` to interface with your application's persistence layer (e.g.
 database), and a controller or other script making use of the `HttpRunnerControllerTrait`
 to  handle incoming requests and interface with your application's session layer.
 
-Each long-running job is coded as the following components:
+Coding a long-running task typically involves setting up the following components:
   - An implementation of `TaskInterface`.
-  - An extension of `AbstractRunnableIterator`.
-  - An implementation of `RunnableInterface`.
+  - An extension of `AbstractRunnableIterator` to serve `Runnables`.
+  - An implementation of `RunnableInterface` to do the work units.
+  - An extension of `TaskInstanceState` to provide input properties specific to the job.
 
 ### Parallelization: using multiple runners
 Strictly speaking, this framework supports concurrent execution of more than one runnable
@@ -132,6 +130,15 @@ code must support this, too:
     simultaneous requests from the same user, and must not be holding the [PHP session lock](http://php.net/manual/en/function.session-write-close.php)
     when the runnables are executing.
     
+### Why is the Task's final result always an HTTP response?
+Packaging the batch run's overall result in a standard HTTP response format enables
+applications to receive requests and decide whether or not to defer them to a batch task. 
+In either case, the HTTP response that the client is expecting is ultimately generated. This
+works  well when clients are implemented using libraries that support request middleware 
+and the Promise pattern. The request middleware watches for raw responses that indicate 
+a batch task is necessary, and rather than resolving the client application code's Promise
+with this incomplete raw response, launches `Runner` requests until it obtains the result HTTP 
+response, which it finally resolves the original Promise with.
 
 ## License
 MIT
