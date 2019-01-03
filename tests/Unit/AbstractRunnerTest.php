@@ -295,6 +295,22 @@ class AbstractRunnerTest extends \PHPUnit_Framework_TestCase {
     );
   }
 
+  public function testIncorrectRunnerId() {
+    $correct_runner_id = 1;
+    $wrong_runner_id = 2;
+    $runner_ids = [$correct_runner_id];
+    $schedule = new TaskInstanceState($this->assignTaskId(), count($runner_ids), 1);
+    $schedule->setRunnerIds($runner_ids);
+
+    $runner = $this->sutFactory(5, $wrong_runner_id, $schedule);
+
+    $result = $runner->run(new TaskMock(), $schedule);
+
+    // For now, we do nothing on wrong runner id.
+    // May throw an exception in a future version.
+    $this->assertNull($result, 'Non-null result from unscheduled runner id');
+  }
+
   public function testSuccessRunnableEvents() {
     $this->_testRunnableEvents(TRUE);
   }

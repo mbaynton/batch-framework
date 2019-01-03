@@ -293,10 +293,17 @@ abstract class AbstractRunner implements RunnerInterface {
     $aggregator = new RunnableResultAggregator();
     $next_runnable = NULL;
 
+    $runner_rank = array_search($this->getRunnerId(), $this->instance_state->getRunnerIds());
+    if ($runner_rank === FALSE) {
+      // Client sent us a runner id that is not valid.
+      // TODO: perhaps throw a unique exception at next minor so controller can send a corrective control message?
+      return null;
+    }
+
     $runnable_iterator = $this->task->getRunnableIterator(
       $this->instance_state,
       $this,
-      array_search($this->getRunnerId(), $this->instance_state->getRunnerIds()),
+      $runner_rank,
       $state['last_completed_runnable_id']
     );
 
